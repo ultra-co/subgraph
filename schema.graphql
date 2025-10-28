@@ -9,6 +9,24 @@ enum ClosedReason {
   LIQUIDATED
 }
 
+enum FundingType {
+  PAID
+  RECEIVED
+}
+
+type Trader {
+  id: ID!
+  address: String!
+  totalPositions: BigInt!
+  openPositions: BigInt!
+  closedPositions: BigInt!
+  liquidatedPositions: BigInt!
+  totalVolume: BigInt!
+  firstTradedAt: BigInt!
+  lastTradedAt: BigInt!
+  fundings: [Funding!]! @derivedFrom(field: "trader_id")
+}
+
 type Market {
   id: ID!
   marketId: String!
@@ -25,12 +43,13 @@ type Market {
 type Position {
   id: ID!
   positionKey: String!
-  user: String!
+  trader_id: String!
   market_id: String!
 
   # Opening details
   collateral: BigInt!
   size: BigInt!
+  leverage: BigInt!
   isLong: Boolean!
   openTotalFee: BigInt!
   openLpFee: BigInt!
@@ -65,6 +84,21 @@ type Position {
   closedPosition_id: String
   liquidatedPosition_id: String
   expiredPosition_id: String
+
+  # Funding payments
+  fundings: [Funding!]! @derivedFrom(field: "position_id")
+}
+
+type Funding {
+  id: ID!
+  trader_id: String!
+  position_id: String!
+  market_id: String!
+  fundingType: FundingType!
+  amount: BigInt!
+  timestamp: BigInt!
+  blockNumber: BigInt!
+  transactionHash: String!
 }
 
 # ============================================

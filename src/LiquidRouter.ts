@@ -10,7 +10,10 @@ import {
   LiquidRouter_PositionClosed,
   LiquidRouter_PositionOpened,
   Position,
+  Trader,
+  Funding,
   ClosedReason,
+  FundingType,
 } from "generated";
 
 LiquidRouter.ExpiredPositionSettled.handler(async ({ event, context }) => {
@@ -43,31 +46,100 @@ LiquidRouter.ExpiredPositionSettled.handler(async ({ event, context }) => {
     };
 
     context.Position.set(updatedPosition);
+
+    // Update trader stats
+    const trader = await context.Trader.get(position.trader_id);
+    if (trader) {
+      const updatedTrader: Trader = {
+        ...trader,
+        openPositions: trader.openPositions - BigInt(1),
+        closedPositions: trader.closedPositions + BigInt(1),
+        lastTradedAt: BigInt(event.block.timestamp),
+      };
+      context.Trader.set(updatedTrader);
+    }
   }
 });
 
 LiquidRouter.FundingPaid.handler(async ({ event, context }) => {
-  const entity: LiquidRouter_FundingPaid = {
-    id: `${event.chainId}_${event.block.number}_${event.logIndex}`,
+  const eventId = `${event.chainId}_${event.block.number}_${event.logIndex}`;
+  const eventEntity: LiquidRouter_FundingPaid = {
+    id: eventId,
     positionKey: event.params.positionKey,
     trader: event.params.trader,
     marketId: event.params.marketId,
     amount: event.params.amount,
   };
 
-  context.LiquidRouter_FundingPaid.set(entity);
+  context.LiquidRouter_FundingPaid.set(eventEntity);
+
+  const positionId = `${event.chainId}_${event.params.positionKey}`;
+
+  // Create Funding entity
+  const funding: Funding = {
+    id: eventId,
+    trader_id: `${event.chainId}_${event.params.trader}`,
+    position_id: positionId,
+    market_id: `${event.chainId}_${event.params.marketId}`,
+    fundingType: FundingType.PAID,
+    amount: event.params.amount,
+    timestamp: BigInt(event.block.timestamp),
+    blockNumber: BigInt(event.block.number),
+    transactionHash: event.transaction.hash,
+  };
+
+  context.Funding.set(funding);
+
+  // Update position collateral - decrease when funding is paid
+  const position = await context.Position.get(positionId);
+
+  if (position) {
+    const updatedPosition: Position = {
+      ...position,
+      collateral: position.collateral - event.params.amount,
+    };
+    context.Position.set(updatedPosition);
+  }
 });
 
 LiquidRouter.FundingReceived.handler(async ({ event, context }) => {
-  const entity: LiquidRouter_FundingReceived = {
-    id: `${event.chainId}_${event.block.number}_${event.logIndex}`,
+  const eventId = `${event.chainId}_${event.block.number}_${event.logIndex}`;
+  const eventEntity: LiquidRouter_FundingReceived = {
+    id: eventId,
     positionKey: event.params.positionKey,
     trader: event.params.trader,
     marketId: event.params.marketId,
     amount: event.params.amount,
   };
 
-  context.LiquidRouter_FundingReceived.set(entity);
+  context.LiquidRouter_FundingReceived.set(eventEntity);
+  const positionId = `${event.chainId}_${event.params.positionKey}`;
+
+  // Create Funding entity
+  const funding: Funding = {
+    id: eventId,
+    trader_id: `${event.chainId}_${event.params.trader}`,
+    position_id: positionId,
+    market_id: `${event.chainId}_${event.params.marketId}`,
+    fundingType: FundingType.RECEIVED,
+    amount: event.params.amount,
+    timestamp: BigInt(event.block.timestamp),
+    blockNumber: BigInt(event.block.number),
+    transactionHash: event.transaction.hash,
+  };
+
+  context.Funding.set(funding);
+
+  // Update position collateral - increase when funding is received
+  const position = await context.Position.get(positionId);
+
+  if (position) {
+    const updatedPosition: Position = {
+      ...position,
+      collateral: position.collateral + event.params.amount,
+    };
+    context.Position.set(updatedPosition);
+  }
 });
 
 LiquidRouter.OwnershipHandoverCanceled.handler(async ({ event, context }) => {
@@ -127,6 +199,18 @@ LiquidRouter.PositionAutoClosedInsufficientFunding.handler(
       };
 
       context.Position.set(updatedPosition);
+
+      // Update trader stats
+      const trader = await context.Trader.get(position.trader_id);
+      if (trader) {
+        const updatedTrader: Trader = {
+          ...trader,
+          openPositions: trader.openPositions - BigInt(1),
+          closedPositions: trader.closedPositions + BigInt(1),
+          lastTradedAt: BigInt(event.block.timestamp),
+        };
+        context.Trader.set(updatedTrader);
+      }
     }
   }
 );
@@ -166,6 +250,18 @@ LiquidRouter.PositionClosed.handler(async ({ event, context }) => {
     };
 
     context.Position.set(updatedPosition);
+
+    // Update trader stats
+    const trader = await context.Trader.get(position.trader_id);
+    if (trader) {
+      const updatedTrader: Trader = {
+        ...trader,
+        openPositions: trader.openPositions - BigInt(1),
+        closedPositions: trader.closedPositions + BigInt(1),
+        lastTradedAt: BigInt(event.block.timestamp),
+      };
+      context.Trader.set(updatedTrader);
+    }
   }
 });
 
@@ -186,14 +282,52 @@ LiquidRouter.PositionOpened.handler(async ({ event, context }) => {
 
   context.LiquidRouter_PositionOpened.set(eventEntity);
 
+  // Get or create Trader entity
+  const traderId = `${event.chainId}_${event.params.user}`;
+  let trader = await context.Trader.get(traderId);
+
+  if (!trader) {
+    // Create new trader
+    trader = {
+      id: traderId,
+      address: event.params.user,
+      totalPositions: BigInt(0),
+      openPositions: BigInt(0),
+      closedPositions: BigInt(0),
+      liquidatedPositions: BigInt(0),
+      totalVolume: BigInt(0),
+      firstTradedAt: BigInt(event.block.timestamp),
+      lastTradedAt: BigInt(event.block.timestamp),
+    };
+  }
+
+  // Update trader stats for opening position
+  const updatedTrader: Trader = {
+    ...trader,
+    totalPositions: trader.totalPositions + BigInt(1),
+    openPositions: trader.openPositions + BigInt(1),
+    totalVolume: trader.totalVolume + event.params.size,
+    lastTradedAt: BigInt(event.block.timestamp),
+  };
+
+  context.Trader.set(updatedTrader);
+
+  // Create Position entity
+  // Calculate leverage: size / collateral
+  const leverage =
+    event.params.collateral > BigInt(0)
+      ? event.params.size / event.params.collateral
+      : BigInt(0);
+
   const position: Position = {
     id: `${event.chainId}_${event.params.positionKey}`,
     positionKey: event.params.positionKey,
-    user: event.params.user,
+    trader_id: traderId,
     market_id: `${event.chainId}_${event.params.marketId}`,
 
     collateral: event.params.collateral,
     size: event.params.size,
+    leverage: leverage,
     isLong: event.params.isLong,
     openTotalFee: event.params.totalFee,
     openLpFee: event.params.lpFee,

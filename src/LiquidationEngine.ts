@@ -4,6 +4,7 @@ import {
   LiquidationEngine_ParametersUpdated,
   LiquidationEngine_PositionLiquidated,
   Position,
+  Trader,
   ClosedReason,
 } from "generated";
 
@@ -58,5 +59,17 @@ LiquidationEngine.PositionLiquidated.handler(async ({ event, context }) => {
     };
 
     context.Position.set(updatedPosition);
+
+    // Update trader stats
+    const trader = await context.Trader.get(position.trader_id);
+    if (trader) {
+      const updatedTrader: Trader = {
+        ...trader,
+        openPositions: trader.openPositions - BigInt(1),
+        liquidatedPositions: trader.liquidatedPositions + BigInt(1),
+        lastTradedAt: BigInt(event.block.timestamp),
+      };
+      context.Trader.set(updatedTrader);
+    }
   }
 });

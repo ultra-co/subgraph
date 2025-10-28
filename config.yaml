@@ -55,7 +55,13 @@ networks:
               transaction_fields:
                 - hash
           - event: FundingPaid(bytes32 indexed positionKey, address indexed trader, bytes32 indexed marketId, int256 amount)
+            field_selection:
+              transaction_fields:
+                - hash
           - event: FundingReceived(bytes32 indexed positionKey, address indexed trader, bytes32 indexed marketId, int256 amount)
+            field_selection:
+              transaction_fields:
+                - hash
           - event: OwnershipHandoverCanceled(address indexed pendingOwner)
           - event: OwnershipHandoverRequested(address indexed pendingOwner)
           - event: OwnershipTransferred(address indexed oldOwner, address indexed newOwner)
