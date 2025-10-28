@@ -19,14 +19,32 @@ networks:
         handler: src/LLPVault.ts
         events:
           - event: Deposit(address indexed by, address indexed owner, uint256 assets, uint256 shares)
+            field_selection:
+              transaction_fields:
+                - hash
           - event: DepositsPaused(bool paused)
           - event: FeeUpdated(string feeType, uint256 newRate)
           - event: FundingPaymentRecorded(int256 netFundingPnL, uint256 newTotalAssets)
+            field_selection:
+              transaction_fields:
+                - hash
           - event: LiquidationFeePaid(uint256 amount)
+            field_selection:
+              transaction_fields:
+                - hash
           - event: TraderPnLSettled(int256 pnl, uint256 newTotalAssets)
+            field_selection:
+              transaction_fields:
+                - hash
           - event: TradingFeePaid(uint256 amount)
+            field_selection:
+              transaction_fields:
+                - hash
           - event: Transfer(address indexed from, address indexed to, uint256 amount)
           - event: Withdraw(address indexed by, address indexed to, address indexed owner, uint256 assets, uint256 shares)
+            field_selection:
+              transaction_fields:
+                - hash
           - event: WithdrawalsPaused(bool paused)
       - name: FundingRateManager
         address:
