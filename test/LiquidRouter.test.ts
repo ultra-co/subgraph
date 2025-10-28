@@ -1,0 +1,502 @@
+import assert from "assert";
+import {
+  TestHelpers,
+  LiquidRouter_PositionOpened,
+  LiquidRouter_PositionClosed,
+  LiquidRouter_FundingPaid,
+  LiquidRouter_FundingReceived,
+  LiquidRouter_ExpiredPositionSettled,
+  Position,
+  Trader,
+  Funding,
+} from "../generated";
+const { MockDb, LiquidRouter } = TestHelpers;
+
+describe("LiquidRouter contract tests", () => {
+  const chainId = 84532;
+  const trader = "0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb";
+  const positionKey =
+    "0xabcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890";
+  const marketId =
+    "0x1111111111111111111111111111111111111111111111111111111111111111";
+
+  describe("PositionOpened event", () => {
+    it("should create new trader on first position", async () => {
+      const mockDb = MockDb.createMockDb();
+      const event = LiquidRouter.PositionOpened.createMockEvent({
+        user: trader,
+        positionKey,
+        marketId,
+        collateral: BigInt(1000e6),
+        size: BigInt(10000e6),
+        isLong: true,
+        totalFee: BigInt(10e6),
+        lpFee: BigInt(8e6),
+        protocolFee: BigInt(2e6),
+      });
+
+      const mockDbUpdated = await LiquidRouter.PositionOpened.processEvent({
+        event,
+        mockDb,
+      });
+
+      const actualTrader = mockDbUpdated.entities.Trader.get(
+        `${chainId}_${trader}`
+      );
+
+      assert.ok(actualTrader, "Trader should be created");
+      assert.strictEqual(actualTrader?.address, trader);
+      assert.strictEqual(actualTrader?.totalPositions, BigInt(1));
+      assert.strictEqual(actualTrader?.openPositions, BigInt(1));
+      assert.strictEqual(actualTrader?.closedPositions, BigInt(0));
+      assert.strictEqual(actualTrader?.liquidatedPositions, BigInt(0));
+      assert.strictEqual(actualTrader?.totalVolume, BigInt(10000e6));
+    });
+
+    it("should create position with correct leverage calculation", async () => {
+      const mockDb = MockDb.createMockDb();
+      const event = LiquidRouter.PositionOpened.createMockEvent({
+        user: trader,
+        positionKey,
+        marketId,
+        collateral: BigInt(1000e6),
+        size: BigInt(10000e6),
+        isLong: true,
+        totalFee: BigInt(10e6),
+        lpFee: BigInt(8e6),
+        protocolFee: BigInt(2e6),
+      });
+
+      const mockDbUpdated = await LiquidRouter.PositionOpened.processEvent({
+        event,
+        mockDb,
+      });
+
+      const actualPosition = mockDbUpdated.entities.Position.get(
+        `${chainId}_${positionKey}`
+      );
+
+      assert.ok(actualPosition, "Position should be created");
+      assert.strictEqual(actualPosition?.collateral, BigInt(1000e6));
+      assert.strictEqual(actualPosition?.size, BigInt(10000e6));
+      assert.strictEqual(actualPosition?.leverage, BigInt(10));
+      assert.strictEqual(actualPosition?.isLong, true);
+      assert.strictEqual(actualPosition?.closed, false);
+      assert.strictEqual(actualPosition?.liquidated, false);
+    });
+
+    it("should handle zero collateral gracefully", async () => {
+      const mockDb = MockDb.createMockDb();
+      const event = LiquidRouter.PositionOpened.createMockEvent({
+        user: trader,
+        positionKey,
+        marketId,
+        collateral: BigInt(0),
+        size: BigInt(10000e6),
+        isLong: true,
+        totalFee: BigInt(10e6),
+        lpFee: BigInt(8e6),
+        protocolFee: BigInt(2e6),
+      });
+
+      const mockDbUpdated = await LiquidRouter.PositionOpened.processEvent({
+        event,
+        mockDb,
+      });
+
+      const actualPosition = mockDbUpdated.entities.Position.get(
+        `${chainId}_${positionKey}`
+      );
+
+      assert.strictEqual(actualPosition?.leverage, BigInt(0));
+    });
+
+    it("should update existing trader stats", async () => {
+      const mockDb = MockDb.createMockDb();
+      const positionKey1 =
+        "0xaaaa000000000000000000000000000000000000000000000000000000000001";
+      const positionKey2 =
+        "0xaaaa000000000000000000000000000000000000000000000000000000000002";
+
+      const event1 = LiquidRouter.PositionOpened.createMockEvent({
+        user: trader,
+        positionKey: positionKey1,
+        marketId,
+        collateral: BigInt(1000e6),
+        size: BigInt(10000e6),
+        isLong: true,
+        totalFee: BigInt(10e6),
+        lpFee: BigInt(8e6),
+        protocolFee: BigInt(2e6),
+      });
+
+      const event2 = LiquidRouter.PositionOpened.createMockEvent({
+        user: trader,
+        positionKey: positionKey2,
+        marketId,
+        collateral: BigInt(2000e6),
+        size: BigInt(15000e6),
+        isLong: false,
+        totalFee: BigInt(15e6),
+        lpFee: BigInt(12e6),
+        protocolFee: BigInt(3e6),
+      });
+
+      let mockDbUpdated = await LiquidRouter.PositionOpened.processEvent({
+        event: event1,
+        mockDb,
+      });
+
+      mockDbUpdated = await LiquidRouter.PositionOpened.processEvent({
+        event: event2,
+        mockDb: mockDbUpdated,
+      });
+
+      const actualTrader = mockDbUpdated.entities.Trader.get(
+        `${chainId}_${trader}`
+      );
+
+      assert.strictEqual(actualTrader?.totalPositions, BigInt(2));
+      assert.strictEqual(actualTrader?.openPositions, BigInt(2));
+      assert.strictEqual(actualTrader?.totalVolume, BigInt(25000e6));
+    });
+  });
+
+  describe("PositionClosed event", () => {
+    it("should close position and update trader stats", async () => {
+      let mockDb = MockDb.createMockDb();
+
+      const openEvent = LiquidRouter.PositionOpened.createMockEvent({
+        user: trader,
+        positionKey,
+        marketId,
+        collateral: BigInt(1000e6),
+        size: BigInt(10000e6),
+        isLong: true,
+        totalFee: BigInt(10e6),
+        lpFee: BigInt(8e6),
+        protocolFee: BigInt(2e6),
+      });
+
+      mockDb = await LiquidRouter.PositionOpened.processEvent({
+        event: openEvent,
+        mockDb,
+      });
+
+      const closeEvent = LiquidRouter.PositionClosed.createMockEvent({
+        user: trader,
+        positionKey,
+        pnl: BigInt(500e6),
+        totalFee: BigInt(10e6),
+        lpFee: BigInt(8e6),
+        protocolFee: BigInt(2e6),
+        netReturn: BigInt(490e6),
+      });
+
+      mockDb = await LiquidRouter.PositionClosed.processEvent({
+        event: closeEvent,
+        mockDb,
+      });
+
+      const actualPosition = mockDb.entities.Position.get(
+        `${chainId}_${positionKey}`
+      );
+      const actualTrader = mockDb.entities.Trader.get(`${chainId}_${trader}`);
+
+      assert.strictEqual(actualPosition?.closed, true);
+      assert.strictEqual(actualPosition?.closedReason, "MANUAL");
+      assert.strictEqual(actualPosition?.pnl, BigInt(500e6));
+      assert.strictEqual(actualPosition?.netReturn, BigInt(490e6));
+
+      assert.strictEqual(actualTrader?.openPositions, BigInt(0));
+      assert.strictEqual(actualTrader?.closedPositions, BigInt(1));
+    });
+
+    it("should handle negative PnL correctly", async () => {
+      let mockDb = MockDb.createMockDb();
+
+      const openEvent = LiquidRouter.PositionOpened.createMockEvent({
+        user: trader,
+        positionKey,
+        marketId,
+        collateral: BigInt(1000e6),
+        size: BigInt(10000e6),
+        isLong: true,
+        totalFee: BigInt(10e6),
+        lpFee: BigInt(8e6),
+        protocolFee: BigInt(2e6),
+      });
+
+      mockDb = await LiquidRouter.PositionOpened.processEvent({
+        event: openEvent,
+        mockDb,
+      });
+
+      const closeEvent = LiquidRouter.PositionClosed.createMockEvent({
+        user: trader,
+        positionKey,
+        pnl: BigInt(-500e6),
+        totalFee: BigInt(10e6),
+        lpFee: BigInt(8e6),
+        protocolFee: BigInt(2e6),
+        netReturn: BigInt(-510e6),
+      });
+
+      mockDb = await LiquidRouter.PositionClosed.processEvent({
+        event: closeEvent,
+        mockDb,
+      });
+
+      const actualPosition = mockDb.entities.Position.get(
+        `${chainId}_${positionKey}`
+      );
+
+      assert.strictEqual(actualPosition?.pnl, BigInt(-500e6));
+      assert.strictEqual(actualPosition?.netReturn, BigInt(-510e6));
+    });
+  });
+
+  describe("FundingPaid event", () => {
+    it("should decrease position collateral when funding is paid", async () => {
+      let mockDb = MockDb.createMockDb();
+
+      const openEvent = LiquidRouter.PositionOpened.createMockEvent({
+        user: trader,
+        positionKey,
+        marketId,
+        collateral: BigInt(1000e6),
+        size: BigInt(10000e6),
+        isLong: true,
+        totalFee: BigInt(10e6),
+        lpFee: BigInt(8e6),
+        protocolFee: BigInt(2e6),
+      });
+
+      mockDb = await LiquidRouter.PositionOpened.processEvent({
+        event: openEvent,
+        mockDb,
+      });
+
+      const fundingEvent = LiquidRouter.FundingPaid.createMockEvent({
+        positionKey,
+        trader,
+        marketId,
+        amount: BigInt(50e6),
+      });
+
+      mockDb = await LiquidRouter.FundingPaid.processEvent({
+        event: fundingEvent,
+        mockDb,
+      });
+
+      const actualPosition = mockDb.entities.Position.get(
+        `${chainId}_${positionKey}`
+      );
+      const actualFunding = mockDb.entities.Funding.get(
+        `${chainId}_${fundingEvent.block.number}_${fundingEvent.logIndex}`
+      );
+
+      assert.strictEqual(actualPosition?.collateral, BigInt(950e6));
+      assert.ok(actualFunding, "Funding entity should be created");
+      assert.strictEqual(actualFunding?.fundingType, "PAID");
+      assert.strictEqual(actualFunding?.amount, BigInt(50e6));
+    });
+
+    it("should handle multiple funding payments", async () => {
+      let mockDb = MockDb.createMockDb();
+
+      const openEvent = LiquidRouter.PositionOpened.createMockEvent({
+        user: trader,
+        positionKey,
+        marketId,
+        collateral: BigInt(1000e6),
+        size: BigInt(10000e6),
+        isLong: true,
+        totalFee: BigInt(10e6),
+        lpFee: BigInt(8e6),
+        protocolFee: BigInt(2e6),
+      });
+
+      mockDb = await LiquidRouter.PositionOpened.processEvent({
+        event: openEvent,
+        mockDb,
+      });
+
+      const fundingEvent1 = LiquidRouter.FundingPaid.createMockEvent({
+        positionKey,
+        trader,
+        marketId,
+        amount: BigInt(30e6),
+      });
+
+      const fundingEvent2 = LiquidRouter.FundingPaid.createMockEvent({
+        positionKey,
+        trader,
+        marketId,
+        amount: BigInt(20e6),
+      });
+
+      mockDb = await LiquidRouter.FundingPaid.processEvent({
+        event: fundingEvent1,
+        mockDb,
+      });
+
+      mockDb = await LiquidRouter.FundingPaid.processEvent({
+        event: fundingEvent2,
+        mockDb,
+      });
+
+      const actualPosition = mockDb.entities.Position.get(
+        `${chainId}_${positionKey}`
+      );
+
+      assert.strictEqual(actualPosition?.collateral, BigInt(950e6));
+    });
+  });
+
+  describe("FundingReceived event", () => {
+    it("should increase position collateral when funding is received", async () => {
+      let mockDb = MockDb.createMockDb();
+
+      const openEvent = LiquidRouter.PositionOpened.createMockEvent({
+        user: trader,
+        positionKey,
+        marketId,
+        collateral: BigInt(1000e6),
+        size: BigInt(10000e6),
+        isLong: true,
+        totalFee: BigInt(10e6),
+        lpFee: BigInt(8e6),
+        protocolFee: BigInt(2e6),
+      });
+
+      mockDb = await LiquidRouter.PositionOpened.processEvent({
+        event: openEvent,
+        mockDb,
+      });
+
+      const fundingEvent = LiquidRouter.FundingReceived.createMockEvent({
+        positionKey,
+        trader,
+        marketId,
+        amount: BigInt(50e6),
+      });
+
+      mockDb = await LiquidRouter.FundingReceived.processEvent({
+        event: fundingEvent,
+        mockDb,
+      });
+
+      const actualPosition = mockDb.entities.Position.get(
+        `${chainId}_${positionKey}`
+      );
+      const actualFunding = mockDb.entities.Funding.get(
+        `${chainId}_${fundingEvent.block.number}_${fundingEvent.logIndex}`
+      );
+
+      assert.strictEqual(actualPosition?.collateral, BigInt(1050e6));
+      assert.ok(actualFunding, "Funding entity should be created");
+      assert.strictEqual(actualFunding?.fundingType, "RECEIVED");
+      assert.strictEqual(actualFunding?.amount, BigInt(50e6));
+    });
+
+    it("should handle combined funding paid and received", async () => {
+      let mockDb = MockDb.createMockDb();
+
+      const openEvent = LiquidRouter.PositionOpened.createMockEvent({
+        user: trader,
+        positionKey,
+        marketId,
+        collateral: BigInt(1000e6),
+        size: BigInt(10000e6),
+        isLong: true,
+        totalFee: BigInt(10e6),
+        lpFee: BigInt(8e6),
+        protocolFee: BigInt(2e6),
+      });
+
+      mockDb = await LiquidRouter.PositionOpened.processEvent({
+        event: openEvent,
+        mockDb,
+      });
+
+      const paidEvent = LiquidRouter.FundingPaid.createMockEvent({
+        positionKey,
+        trader,
+        marketId,
+        amount: BigInt(30e6),
+      });
+
+      const receivedEvent = LiquidRouter.FundingReceived.createMockEvent({
+        positionKey,
+        trader,
+        marketId,
+        amount: BigInt(50e6),
+      });
+
+      mockDb = await LiquidRouter.FundingPaid.processEvent({
+        event: paidEvent,
+        mockDb,
+      });
+
+      mockDb = await LiquidRouter.FundingReceived.processEvent({
+        event: receivedEvent,
+        mockDb,
+      });
+
+      const actualPosition = mockDb.entities.Position.get(
+        `${chainId}_${positionKey}`
+      );
+
+      assert.strictEqual(actualPosition?.collateral, BigInt(1020e6));
+    });
+  });
+
+  describe("ExpiredPositionSettled event", () => {
+    it("should mark position as expired and update trader stats", async () => {
+      let mockDb = MockDb.createMockDb();
+
+      const openEvent = LiquidRouter.PositionOpened.createMockEvent({
+        user: trader,
+        positionKey,
+        marketId,
+        collateral: BigInt(1000e6),
+        size: BigInt(10000e6),
+        isLong: true,
+        totalFee: BigInt(10e6),
+        lpFee: BigInt(8e6),
+        protocolFee: BigInt(2e6),
+      });
+
+      mockDb = await LiquidRouter.PositionOpened.processEvent({
+        event: openEvent,
+        mockDb,
+      });
+
+      const expiredEvent = LiquidRouter.ExpiredPositionSettled.createMockEvent({
+        positionKey,
+        trader,
+        marketId,
+        pnl: BigInt(100e6),
+        netReturn: BigInt(90e6),
+      });
+
+      mockDb = await LiquidRouter.ExpiredPositionSettled.processEvent({
+        event: expiredEvent,
+        mockDb,
+      });
+
+      const actualPosition = mockDb.entities.Position.get(
+        `${chainId}_${positionKey}`
+      );
+      const actualTrader = mockDb.entities.Trader.get(`${chainId}_${trader}`);
+
+      assert.strictEqual(actualPosition?.closed, true);
+      assert.strictEqual(actualPosition?.closedReason, "EXPIRED");
+      assert.strictEqual(actualPosition?.pnl, BigInt(100e6));
+
+      assert.strictEqual(actualTrader?.openPositions, BigInt(0));
+      assert.strictEqual(actualTrader?.closedPositions, BigInt(1));
+    });
+  });
+});

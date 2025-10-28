@@ -5,7 +5,6 @@ import {
   LiquidationEngine_PositionLiquidated,
   Position,
   Trader,
-  ClosedReason,
 } from "generated";
 
 LiquidationEngine.KeeperRewardsClaimed.handler(async ({ event, context }) => {
@@ -51,7 +50,7 @@ LiquidationEngine.PositionLiquidated.handler(async ({ event, context }) => {
       ...position,
       closed: true,
       liquidated: true,
-      closedReason: ClosedReason.LIQUIDATED,
+      closedReason: "LIQUIDATED",
       liquidatedAt: BigInt(event.block.timestamp),
       liquidationBlockNumber: BigInt(event.block.number),
       liquidationTransactionHash: event.transaction.hash,

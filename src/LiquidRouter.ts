@@ -12,8 +12,6 @@ import {
   Position,
   Trader,
   Funding,
-  ClosedReason,
-  FundingType,
 } from "generated";
 
 LiquidRouter.ExpiredPositionSettled.handler(async ({ event, context }) => {
@@ -41,7 +39,7 @@ LiquidRouter.ExpiredPositionSettled.handler(async ({ event, context }) => {
       closeBlockNumber: BigInt(event.block.number),
       closeTransactionHash: event.transaction.hash,
       closed: true,
-      closedReason: ClosedReason.EXPIRED,
+      closedReason: "EXPIRED",
       expiredPosition_id: eventId,
     };
 
@@ -81,7 +79,7 @@ LiquidRouter.FundingPaid.handler(async ({ event, context }) => {
     trader_id: `${event.chainId}_${event.params.trader}`,
     position_id: positionId,
     market_id: `${event.chainId}_${event.params.marketId}`,
-    fundingType: FundingType.PAID,
+    fundingType: "PAID",
     amount: event.params.amount,
     timestamp: BigInt(event.block.timestamp),
     blockNumber: BigInt(event.block.number),
@@ -121,7 +119,7 @@ LiquidRouter.FundingReceived.handler(async ({ event, context }) => {
     trader_id: `${event.chainId}_${event.params.trader}`,
     position_id: positionId,
     market_id: `${event.chainId}_${event.params.marketId}`,
-    fundingType: FundingType.RECEIVED,
+    fundingType: "RECEIVED",
     amount: event.params.amount,
     timestamp: BigInt(event.block.timestamp),
     blockNumber: BigInt(event.block.number),
@@ -194,7 +192,7 @@ LiquidRouter.PositionAutoClosedInsufficientFunding.handler(
         closeBlockNumber: BigInt(event.block.number),
         closeTransactionHash: event.transaction.hash,
         closed: true,
-        closedReason: ClosedReason.INSUFFICIENT_FUNDING,
+        closedReason: "INSUFFICIENT_FUNDING",
         closedPosition_id: eventId,
       };
 
@@ -245,7 +243,7 @@ LiquidRouter.PositionClosed.handler(async ({ event, context }) => {
       closeBlockNumber: BigInt(event.block.number),
       closeTransactionHash: event.transaction.hash,
       closed: true,
-      closedReason: ClosedReason.MANUAL,
+      closedReason: "MANUAL",
       closedPosition_id: eventId,
     };
 
