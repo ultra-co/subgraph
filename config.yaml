@@ -1,0 +1,66 @@
+# yaml-language-server: $schema=./node_modules/envio/evm.schema.json
+name: liquid-protocol-graph
+networks:
+- id: 84532
+  start_block: 0
+  contracts:
+  - name: ProbabilityOracle
+    address:
+    - 0x56B6f895EEcd49a72b7920C697A6bff6655644ad
+    handler: src/EventHandlers.ts
+    events:
+    - event: MarketSourceInitialized(bytes32 indexed marketId, string sourcePlatform, string sourceMarketId)
+    - event: PriceUpdated(bytes32 indexed marketId, uint96 price, uint64 timestamp)
+    - event: PriceUpdaterChanged(address indexed newUpdater)
+    - event: TWAPPeriodUpdated(uint32 newPeriod)
+  - name: LLPVault
+    address:
+    - 0x994b1561b2ad9b83FC9112969278B251F7e42FC1
+    handler: src/EventHandlers.ts
+    events:
+    - event: Deposit(address indexed by, address indexed owner, uint256 assets, uint256 shares)
+    - event: DepositsPaused(bool paused)
+    - event: FeeUpdated(string feeType, uint256 newRate)
+    - event: FundingPaymentRecorded(int256 netFundingPnL, uint256 newTotalAssets)
+    - event: LiquidationFeePaid(uint256 amount)
+    - event: TraderPnLSettled(int256 pnl, uint256 newTotalAssets)
+    - event: TradingFeePaid(uint256 amount)
+    - event: Transfer(address indexed from, address indexed to, uint256 amount)
+    - event: Withdraw(address indexed by, address indexed to, address indexed owner, uint256 assets, uint256 shares)
+    - event: WithdrawalsPaused(bool paused)
+  - name: FundingRateManager
+    address:
+    - 0x2abD267abd0BfcE6135761A07E3B4012C9E0D5a1
+    handler: src/EventHandlers.ts
+    events:
+    - event: FundingRateCalculated(bytes32 indexed marketId, int256 fundingRate, int256 skew, uint256 timestamp)
+  - name: LiquidationEngine
+    address:
+    - 0xc0aEDab7CAe28b72be8313dc6b5508F200677ef5
+    handler: src/EventHandlers.ts
+    events:
+    - event: KeeperRewardsClaimed(address indexed keeper, uint256 amount)
+    - event: ParametersUpdated(uint256 maintenanceMarginRate, uint256 liquidationPenaltyRate, uint256 keeperFee)
+    - event: PositionLiquidated(bytes32 indexed positionKey, address indexed trader, address indexed liquidator, uint256 collateralSeized, uint256 keeperReward, uint256 penaltyToVault)
+  - name: LiquidRouter
+    address:
+    - 0x24B2dAc2044f4DBd5512C8095B8592aCAC5BBe58
+    handler: src/EventHandlers.ts
+    events:
+    - event: ExpiredPositionSettled(bytes32 indexed positionKey, address indexed trader, bytes32 indexed marketId, int256 pnl, int256 netReturn)
+    - event: FundingPaid(bytes32 indexed positionKey, address indexed trader, bytes32 indexed marketId, int256 amount)
+    - event: FundingReceived(bytes32 indexed positionKey, address indexed trader, bytes32 indexed marketId, int256 amount)
+    - event: OwnershipHandoverCanceled(address indexed pendingOwner)
+    - event: OwnershipHandoverRequested(address indexed pendingOwner)
+    - event: OwnershipTransferred(address indexed oldOwner, address indexed newOwner)
+    - event: PositionAutoClosedInsufficientFunding(bytes32 indexed positionKey, address indexed trader, bytes32 indexed marketId, int256 remainingValue)
+    - event: PositionClosed(address indexed user, bytes32 indexed positionKey, int256 pnl, uint256 totalFee, uint256 lpFee, uint256 protocolFee, int256 netReturn)
+    - event: PositionOpened(address indexed user, bytes32 indexed positionKey, bytes32 indexed marketId, uint128 collateral, uint128 size, bool isLong, uint256 totalFee, uint256 lpFee, uint256 protocolFee)
+  - name: MarketFactory
+    address:
+    - 0xB8aA1dB23535307a4A7384Fbb3564ac371b7122d
+    handler: src/EventHandlers.ts
+    events:
+    - event: MarketCreated(bytes32 indexed marketId, string name, string sourcePlatform, string sourceMarketId, uint64 expiryTimestamp, address indexed creator)
+unordered_multichain_mode: true
+preload_handlers: true

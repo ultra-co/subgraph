@@ -1,0 +1,200 @@
+type FundingRateManager_FundingRateCalculated {
+  id: ID!
+  marketId: String!
+  fundingRate: BigInt!
+  skew: BigInt!
+  timestamp: BigInt!
+}
+
+type LLPVault_Deposit {
+  id: ID!
+  by: String!
+  owner: String!
+  assets: BigInt!
+  shares: BigInt!
+}
+
+type LLPVault_DepositsPaused {
+  id: ID!
+  paused: Boolean!
+}
+
+type LLPVault_FeeUpdated {
+  id: ID!
+  feeType: String!
+  newRate: BigInt!
+}
+
+type LLPVault_FundingPaymentRecorded {
+  id: ID!
+  netFundingPnL: BigInt!
+  newTotalAssets: BigInt!
+}
+
+type LLPVault_LiquidationFeePaid {
+  id: ID!
+  amount: BigInt!
+}
+
+type LLPVault_TraderPnLSettled {
+  id: ID!
+  pnl: BigInt!
+  newTotalAssets: BigInt!
+}
+
+type LLPVault_TradingFeePaid {
+  id: ID!
+  amount: BigInt!
+}
+
+type LLPVault_Transfer {
+  id: ID!
+  from: String!
+  to: String!
+  amount: BigInt!
+}
+
+type LLPVault_Withdraw {
+  id: ID!
+  by: String!
+  to: String!
+  owner: String!
+  assets: BigInt!
+  shares: BigInt!
+}
+
+type LLPVault_WithdrawalsPaused {
+  id: ID!
+  paused: Boolean!
+}
+
+type LiquidRouter_ExpiredPositionSettled {
+  id: ID!
+  positionKey: String!
+  trader: String!
+  marketId: String!
+  pnl: BigInt!
+  netReturn: BigInt!
+}
+
+type LiquidRouter_FundingPaid {
+  id: ID!
+  positionKey: String!
+  trader: String!
+  marketId: String!
+  amount: BigInt!
+}
+
+type LiquidRouter_FundingReceived {
+  id: ID!
+  positionKey: String!
+  trader: String!
+  marketId: String!
+  amount: BigInt!
+}
+
+type LiquidRouter_OwnershipHandoverCanceled {
+  id: ID!
+  pendingOwner: String!
+}
+
+type LiquidRouter_OwnershipHandoverRequested {
+  id: ID!
+  pendingOwner: String!
+}
+
+type LiquidRouter_OwnershipTransferred {
+  id: ID!
+  oldOwner: String!
+  newOwner: String!
+}
+
+type LiquidRouter_PositionAutoClosedInsufficientFunding {
+  id: ID!
+  positionKey: String!
+  trader: String!
+  marketId: String!
+  remainingValue: BigInt!
+}
+
+type LiquidRouter_PositionClosed {
+  id: ID!
+  user: String!
+  positionKey: String!
+  pnl: BigInt!
+  totalFee: BigInt!
+  lpFee: BigInt!
+  protocolFee: BigInt!
+  netReturn: BigInt!
+}
+
+type LiquidRouter_PositionOpened {
+  id: ID!
+  user: String!
+  positionKey: String!
+  marketId: String!
+  collateral: BigInt!
+  size: BigInt!
+  isLong: Boolean!
+  totalFee: BigInt!
+  lpFee: BigInt!
+  protocolFee: BigInt!
+}
+
+type LiquidationEngine_KeeperRewardsClaimed {
+  id: ID!
+  keeper: String!
+  amount: BigInt!
+}
+
+type LiquidationEngine_ParametersUpdated {
+  id: ID!
+  maintenanceMarginRate: BigInt!
+  liquidationPenaltyRate: BigInt!
+  keeperFee: BigInt!
+}
+
+type LiquidationEngine_PositionLiquidated {
+  id: ID!
+  positionKey: String!
+  trader: String!
+  liquidator: String!
+  collateralSeized: BigInt!
+  keeperReward: BigInt!
+  penaltyToVault: BigInt!
+}
+
+type MarketFactory_MarketCreated {
+  id: ID!
+  marketId: String!
+  name: String!
+  sourcePlatform: String!
+  sourceMarketId: String!
+  expiryTimestamp: BigInt!
+  creator: String!
+}
+
+type ProbabilityOracle_MarketSourceInitialized {
+  id: ID!
+  marketId: String!
+  sourcePlatform: String!
+  sourceMarketId: String!
+}
+
+type ProbabilityOracle_PriceUpdated {
+  id: ID!
+  marketId: String!
+  price: BigInt!
+  timestamp: BigInt!
+}
+
+type ProbabilityOracle_PriceUpdaterChanged {
+  id: ID!
+  newUpdater: String!
+}
+
+type ProbabilityOracle_TWAPPeriodUpdated {
+  id: ID!
+  newPeriod: BigInt!
+}
+
