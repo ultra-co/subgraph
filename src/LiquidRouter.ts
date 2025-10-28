@@ -30,7 +30,7 @@ LiquidRouter.ExpiredPositionSettled.handler(async ({ event, context }) => {
   const positionId = `${event.chainId}_${event.params.positionKey}`;
   const position = await context.Position.get(positionId);
 
-  if (position) {
+  if (position && !position.closed) {
     const updatedPosition: Position = {
       ...position,
       pnl: event.params.pnl,
@@ -48,9 +48,14 @@ LiquidRouter.ExpiredPositionSettled.handler(async ({ event, context }) => {
     // Update trader stats
     const trader = await context.Trader.get(position.trader_id);
     if (trader) {
+      const newOpenPositions =
+        trader.openPositions > BigInt(0)
+          ? trader.openPositions - BigInt(1)
+          : BigInt(0);
+
       const updatedTrader: Trader = {
         ...trader,
-        openPositions: trader.openPositions - BigInt(1),
+        openPositions: newOpenPositions,
         closedPositions: trader.closedPositions + BigInt(1),
         lastTradedAt: BigInt(event.block.timestamp),
       };
@@ -184,7 +189,7 @@ LiquidRouter.PositionAutoClosedInsufficientFunding.handler(
     const positionId = `${event.chainId}_${event.params.positionKey}`;
     const position = await context.Position.get(positionId);
 
-    if (position) {
+    if (position && !position.closed) {
       const updatedPosition: Position = {
         ...position,
         remainingValue: event.params.remainingValue,
@@ -201,9 +206,14 @@ LiquidRouter.PositionAutoClosedInsufficientFunding.handler(
       // Update trader stats
       const trader = await context.Trader.get(position.trader_id);
       if (trader) {
+        const newOpenPositions =
+          trader.openPositions > BigInt(0)
+            ? trader.openPositions - BigInt(1)
+            : BigInt(0);
+
         const updatedTrader: Trader = {
           ...trader,
-          openPositions: trader.openPositions - BigInt(1),
+          openPositions: newOpenPositions,
           closedPositions: trader.closedPositions + BigInt(1),
           lastTradedAt: BigInt(event.block.timestamp),
         };
@@ -231,7 +241,7 @@ LiquidRouter.PositionClosed.handler(async ({ event, context }) => {
   const positionId = `${event.chainId}_${event.params.positionKey}`;
   const position = await context.Position.get(positionId);
 
-  if (position) {
+  if (position && !position.closed) {
     const updatedPosition: Position = {
       ...position,
       pnl: event.params.pnl,
@@ -252,9 +262,14 @@ LiquidRouter.PositionClosed.handler(async ({ event, context }) => {
     // Update trader stats
     const trader = await context.Trader.get(position.trader_id);
     if (trader) {
+      const newOpenPositions =
+        trader.openPositions > BigInt(0)
+          ? trader.openPositions - BigInt(1)
+          : BigInt(0);
+
       const updatedTrader: Trader = {
         ...trader,
-        openPositions: trader.openPositions - BigInt(1),
+        openPositions: newOpenPositions,
         closedPositions: trader.closedPositions + BigInt(1),
         lastTradedAt: BigInt(event.block.timestamp),
       };
