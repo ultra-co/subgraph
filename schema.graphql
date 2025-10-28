@@ -9,6 +9,18 @@ enum ClosedReason {
   LIQUIDATED
 }
 
+type Trader {
+  id: ID!
+  address: String!
+  totalPositions: BigInt!
+  openPositions: BigInt!
+  closedPositions: BigInt!
+  liquidatedPositions: BigInt!
+  totalVolume: BigInt!
+  firstTradedAt: BigInt!
+  lastTradedAt: BigInt!
+}
+
 type Market {
   id: ID!
   marketId: String!
@@ -25,12 +37,13 @@ type Market {
 type Position {
   id: ID!
   positionKey: String!
-  user: String!
+  trader_id: String!
   market_id: String!
 
   # Opening details
   collateral: BigInt!
   size: BigInt!
+  leverage: BigInt!
   isLong: Boolean!
   openTotalFee: BigInt!
   openLpFee: BigInt!
