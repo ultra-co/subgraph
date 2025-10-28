@@ -2,7 +2,7 @@
 name: liquid-protocol-graph
 networks:
   - id: 84532
-    start_block: 0
+    start_block: 32906969
     contracts:
       - name: ProbabilityOracle
         address:
@@ -42,25 +42,43 @@ networks:
           - event: KeeperRewardsClaimed(address indexed keeper, uint256 amount)
           - event: ParametersUpdated(uint256 maintenanceMarginRate, uint256 liquidationPenaltyRate, uint256 keeperFee)
           - event: PositionLiquidated(bytes32 indexed positionKey, address indexed trader, address indexed liquidator, uint256 collateralSeized, uint256 keeperReward, uint256 penaltyToVault)
+            field_selection:
+              transaction_fields:
+                - hash
       - name: LiquidRouter
         address:
           - 0x24B2dAc2044f4DBd5512C8095B8592aCAC5BBe58
         handler: src/LiquidRouter.ts
         events:
           - event: ExpiredPositionSettled(bytes32 indexed positionKey, address indexed trader, bytes32 indexed marketId, int256 pnl, int256 netReturn)
+            field_selection:
+              transaction_fields:
+                - hash
           - event: FundingPaid(bytes32 indexed positionKey, address indexed trader, bytes32 indexed marketId, int256 amount)
           - event: FundingReceived(bytes32 indexed positionKey, address indexed trader, bytes32 indexed marketId, int256 amount)
           - event: OwnershipHandoverCanceled(address indexed pendingOwner)
           - event: OwnershipHandoverRequested(address indexed pendingOwner)
           - event: OwnershipTransferred(address indexed oldOwner, address indexed newOwner)
           - event: PositionAutoClosedInsufficientFunding(bytes32 indexed positionKey, address indexed trader, bytes32 indexed marketId, int256 remainingValue)
+            field_selection:
+              transaction_fields:
+                - hash
           - event: PositionClosed(address indexed user, bytes32 indexed positionKey, int256 pnl, uint256 totalFee, uint256 lpFee, uint256 protocolFee, int256 netReturn)
+            field_selection:
+              transaction_fields:
+                - hash
           - event: PositionOpened(address indexed user, bytes32 indexed positionKey, bytes32 indexed marketId, uint128 collateral, uint128 size, bool isLong, uint256 totalFee, uint256 lpFee, uint256 protocolFee)
+            field_selection:
+              transaction_fields:
+                - hash
       - name: MarketFactory
         address:
           - 0xB8aA1dB23535307a4A7384Fbb3564ac371b7122d
         handler: src/MarketFactory.ts
         events:
           - event: MarketCreated(bytes32 indexed marketId, string name, string sourcePlatform, string sourceMarketId, uint64 expiryTimestamp, address indexed creator)
+            field_selection:
+              transaction_fields:
+                - hash
 unordered_multichain_mode: true
 preload_handlers: true
