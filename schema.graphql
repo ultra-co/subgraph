@@ -1,3 +1,76 @@
+# ============================================
+# Business Logic Entities
+# ============================================
+
+enum ClosedReason {
+  MANUAL
+  INSUFFICIENT_FUNDING
+  EXPIRED
+  LIQUIDATED
+}
+
+type Market {
+  id: ID!
+  marketId: String!
+  name: String!
+  sourcePlatform: String!
+  sourceMarketId: String!
+  expiryTimestamp: BigInt!
+  creator: String!
+  createdAt: BigInt!
+  blockNumber: BigInt!
+  transactionHash: String!
+}
+
+type Position {
+  id: ID!
+  positionKey: String!
+  user: String!
+  market_id: String!
+
+  # Opening details
+  collateral: BigInt!
+  size: BigInt!
+  isLong: Boolean!
+  openTotalFee: BigInt!
+  openLpFee: BigInt!
+  openProtocolFee: BigInt!
+  openedAt: BigInt!
+  openBlockNumber: BigInt!
+  openTransactionHash: String!
+
+  # Closing details (nullable until position is closed)
+  pnl: BigInt
+  closeTotalFee: BigInt
+  closeLpFee: BigInt
+  closeProtocolFee: BigInt
+  netReturn: BigInt
+  closedAt: BigInt
+  closeBlockNumber: BigInt
+  closeTransactionHash: String
+
+  # Status fields
+  closed: Boolean!
+  liquidated: Boolean!
+  closedReason: ClosedReason
+  liquidatedAt: BigInt
+  liquidationBlockNumber: BigInt
+  liquidationTransactionHash: String
+
+  # Insufficient funding details (if applicable)
+  remainingValue: BigInt
+
+  # Foreign keys for auditing (links to raw event entities)
+  openedPosition_id: String!
+  closedPosition_id: String
+  liquidatedPosition_id: String
+  expiredPosition_id: String
+}
+
+# ============================================
+# Raw Event Entities
+# ============================================
+
 type FundingRateManager_FundingRateCalculated {
   id: ID!
   marketId: String!
@@ -197,4 +270,3 @@ type ProbabilityOracle_TWAPPeriodUpdated {
   id: ID!
   newPeriod: BigInt!
 }
-

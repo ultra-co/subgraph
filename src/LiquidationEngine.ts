@@ -3,6 +3,8 @@ import {
   LiquidationEngine_KeeperRewardsClaimed,
   LiquidationEngine_ParametersUpdated,
   LiquidationEngine_PositionLiquidated,
+  Position,
+  ClosedReason,
 } from "generated";
 
 LiquidationEngine.KeeperRewardsClaimed.handler(async ({ event, context }) => {
@@ -27,8 +29,9 @@ LiquidationEngine.ParametersUpdated.handler(async ({ event, context }) => {
 });
 
 LiquidationEngine.PositionLiquidated.handler(async ({ event, context }) => {
-  const entity: LiquidationEngine_PositionLiquidated = {
-    id: `${event.chainId}_${event.block.number}_${event.logIndex}`,
+  const eventId = `${event.chainId}_${event.block.number}_${event.logIndex}`;
+  const eventEntity: LiquidationEngine_PositionLiquidated = {
+    id: eventId,
     positionKey: event.params.positionKey,
     trader: event.params.trader,
     liquidator: event.params.liquidator,
@@ -37,5 +40,23 @@ LiquidationEngine.PositionLiquidated.handler(async ({ event, context }) => {
     penaltyToVault: event.params.penaltyToVault,
   };
 
-  context.LiquidationEngine_PositionLiquidated.set(entity);
+  context.LiquidationEngine_PositionLiquidated.set(eventEntity);
+
+  const positionId = `${event.chainId}_${event.params.positionKey}`;
+  const position = await context.Position.get(positionId);
+
+  if (position) {
+    const updatedPosition: Position = {
+      ...position,
+      closed: true,
+      liquidated: true,
+      closedReason: ClosedReason.LIQUIDATED,
+      liquidatedAt: BigInt(event.block.timestamp),
+      liquidationBlockNumber: BigInt(event.block.number),
+      liquidationTransactionHash: event.transaction.hash,
+      liquidatedPosition_id: eventId,
+    };
+
+    context.Position.set(updatedPosition);
+  }
 });
