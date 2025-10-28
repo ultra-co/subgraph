@@ -498,7 +498,7 @@ describe("Edge cases and defensive programming", () => {
         `${chainId}_${positionKey}`
       );
 
-      assert.strictEqual(position?.leverage, BigInt(100));
+      assert.strictEqual(position?.leverage, BigInt(100e18));
     });
 
     it("should handle zero size position", async () => {

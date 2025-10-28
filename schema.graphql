@@ -57,7 +57,7 @@ type Position {
   # Opening details
   collateral: BigInt!
   size: BigInt!
-  leverage: BigInt!
+  leverage: BigInt! # Leverage with 18 decimals precision (divide by 1e18 for actual leverage)
   isLong: Boolean!
   openTotalFee: BigInt!
   openLpFee: BigInt!

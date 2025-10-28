@@ -79,7 +79,7 @@ describe("LiquidRouter contract tests", () => {
       assert.ok(actualPosition, "Position should be created");
       assert.strictEqual(actualPosition?.collateral, BigInt(1000e6));
       assert.strictEqual(actualPosition?.size, BigInt(10000e6));
-      assert.strictEqual(actualPosition?.leverage, BigInt(10));
+      assert.strictEqual(actualPosition?.leverage, BigInt(10e18));
       assert.strictEqual(actualPosition?.isLong, true);
       assert.strictEqual(actualPosition?.closed, false);
       assert.strictEqual(actualPosition?.liquidated, false);
