@@ -17,6 +17,18 @@ import {
   VaultRevenue,
 } from "generated";
 
+/**
+ * Price precision constant for accurate decimal calculations with BigInt.
+ *
+ * BigInt only supports integer math, so we use 18 decimal precision to store prices:
+ * - Multiply by PRICE_PRECISION when calculating prices (sharePrice = totalAssets * PRICE_PRECISION / totalShares)
+ * - Divide by PRICE_PRECISION when using prices (estimatedValue = currentShares * sharePrice / PRICE_PRECISION)
+ *
+ * Example: Share price of 1.05 USDC/share is stored as 1.05e18 = 1,050,000,000,000,000,000
+ * This allows us to preserve decimal precision without floating point arithmetic.
+ */
+const PRICE_PRECISION = BigInt(1e18);
+
 LLPVault.Deposit.handler(async ({ event, context }) => {
   const eventId = `${event.chainId}_${event.block.number}_${event.logIndex}`;
   const eventEntity: LLPVault_Deposit = {
@@ -62,15 +74,18 @@ LLPVault.Deposit.handler(async ({ event, context }) => {
     };
   }
 
+  const newTotalAssets = vault.totalAssets + event.params.assets;
+  const newTotalShares = vault.totalShares + event.params.shares;
+  const newSharePrice =
+    newTotalShares > BigInt(0)
+      ? (newTotalAssets * PRICE_PRECISION) / newTotalShares
+      : BigInt(0);
+
   const updatedVault: Vault = {
     ...vault,
-    totalAssets: vault.totalAssets + event.params.assets,
-    totalShares: vault.totalShares + event.params.shares,
-    sharePrice:
-      vault.totalShares + event.params.shares > BigInt(0)
-        ? (vault.totalAssets + event.params.assets) /
-          (vault.totalShares + event.params.shares)
-        : BigInt(0),
+    totalAssets: newTotalAssets,
+    totalShares: newTotalShares,
+    sharePrice: newSharePrice,
     totalDepositsAmount: vault.totalDepositsAmount + event.params.assets,
     depositCount: vault.depositCount + BigInt(1),
     netDeposits: vault.netDeposits + event.params.assets,
@@ -105,30 +120,38 @@ LLPVault.Deposit.handler(async ({ event, context }) => {
     };
   }
 
+  const newCurrentShares = shareholder.currentShares + event.params.shares;
+  const newTotalDeposited = shareholder.totalDeposited + event.params.assets;
+  const newTotalSharesReceived =
+    shareholder.totalSharesReceived + event.params.shares;
+  const newEstimatedValue =
+    (newCurrentShares * newSharePrice) / PRICE_PRECISION;
+  const newAverageDepositPrice =
+    newTotalSharesReceived > BigInt(0)
+      ? (newTotalDeposited * PRICE_PRECISION) / newTotalSharesReceived
+      : BigInt(0);
+  const newUnrealizedPnL =
+    newEstimatedValue - newTotalDeposited + shareholder.totalWithdrawn;
+
   const updatedShareholder: Shareholder = {
     ...shareholder,
-    currentShares: shareholder.currentShares + event.params.shares,
-    estimatedValue:
-      (shareholder.currentShares + event.params.shares) *
-      updatedVault.sharePrice,
-    totalDeposited: shareholder.totalDeposited + event.params.assets,
+    currentShares: newCurrentShares,
+    estimatedValue: newEstimatedValue,
+    totalDeposited: newTotalDeposited,
     netDeposits: shareholder.netDeposits + event.params.assets,
-    totalSharesReceived: shareholder.totalSharesReceived + event.params.shares,
+    totalSharesReceived: newTotalSharesReceived,
     depositCount: shareholder.depositCount + BigInt(1),
-    averageDepositPrice:
-      shareholder.totalSharesReceived + event.params.shares > BigInt(0)
-        ? (shareholder.totalDeposited + event.params.assets) /
-          (shareholder.totalSharesReceived + event.params.shares)
-        : BigInt(0),
-    unrealizedPnL:
-      (shareholder.currentShares + event.params.shares) *
-        updatedVault.sharePrice -
-      (shareholder.totalDeposited + event.params.assets) +
-      shareholder.totalWithdrawn,
+    averageDepositPrice: newAverageDepositPrice,
+    unrealizedPnL: newUnrealizedPnL,
     lastActivityAt: BigInt(event.block.timestamp),
   };
 
   context.Shareholder.set(updatedShareholder);
+
+  const depositSharePrice =
+    event.params.shares > BigInt(0)
+      ? (event.params.assets * PRICE_PRECISION) / event.params.shares
+      : BigInt(0);
 
   const vaultDeposit: VaultDeposit = {
     id: eventId,
@@ -138,10 +161,7 @@ LLPVault.Deposit.handler(async ({ event, context }) => {
     receiver: event.params.owner,
     assetsDeposited: event.params.assets,
     sharesReceived: event.params.shares,
-    sharePrice:
-      event.params.shares > BigInt(0)
-        ? event.params.assets / event.params.shares
-        : BigInt(0),
+    sharePrice: depositSharePrice,
     vaultTotalAssets: updatedVault.totalAssets,
     vaultTotalShares: updatedVault.totalShares,
     timestamp: BigInt(event.block.timestamp),
@@ -241,13 +261,15 @@ LLPVault.FundingPaymentRecorded.handler(async ({ event, context }) => {
     const newNetFunding = newFundingReceived - newFundingPaid;
     const newNetProfit = newTotalRevenue - vault.traderProfitsPaid;
 
+    const newSharePrice =
+      vault.totalShares > BigInt(0)
+        ? (event.params.newTotalAssets * PRICE_PRECISION) / vault.totalShares
+        : BigInt(0);
+
     const updatedVault: Vault = {
       ...vault,
       totalAssets: event.params.newTotalAssets,
-      sharePrice:
-        vault.totalShares > BigInt(0)
-          ? event.params.newTotalAssets / vault.totalShares
-          : BigInt(0),
+      sharePrice: newSharePrice,
       fundingFeesReceived: newFundingReceived,
       fundingFeesPaid: newFundingPaid,
       netFundingFees: newNetFunding,
@@ -297,13 +319,15 @@ LLPVault.LiquidationFeePaid.handler(async ({ event, context }) => {
       vault.liquidationFeesCollected + event.params.amount;
     const newNetProfit = newTotalRevenue - vault.traderProfitsPaid;
 
+    const newSharePrice =
+      vault.totalShares > BigInt(0)
+        ? (newTotalAssets * PRICE_PRECISION) / vault.totalShares
+        : BigInt(0);
+
     const updatedVault: Vault = {
       ...vault,
       totalAssets: newTotalAssets,
-      sharePrice:
-        vault.totalShares > BigInt(0)
-          ? newTotalAssets / vault.totalShares
-          : BigInt(0),
+      sharePrice: newSharePrice,
       liquidationFeesCollected: newLiquidationFees,
       totalRevenue: newTotalRevenue,
       netProfit: newNetProfit,
@@ -362,13 +386,15 @@ LLPVault.TraderPnLSettled.handler(async ({ event, context }) => {
 
     const newNetProfit = newTotalRevenue - newTraderProfits;
 
+    const newSharePrice =
+      vault.totalShares > BigInt(0)
+        ? (event.params.newTotalAssets * PRICE_PRECISION) / vault.totalShares
+        : BigInt(0);
+
     const updatedVault: Vault = {
       ...vault,
       totalAssets: event.params.newTotalAssets,
-      sharePrice:
-        vault.totalShares > BigInt(0)
-          ? event.params.newTotalAssets / vault.totalShares
-          : BigInt(0),
+      sharePrice: newSharePrice,
       traderLossesCollected: newTraderLosses,
       traderProfitsPaid: newTraderProfits,
       totalRevenue: newTotalRevenue,
@@ -416,13 +442,15 @@ LLPVault.TradingFeePaid.handler(async ({ event, context }) => {
     const newTradingFees = vault.tradingFeesCollected + event.params.amount;
     const newNetProfit = newTotalRevenue - vault.traderProfitsPaid;
 
+    const newSharePrice =
+      vault.totalShares > BigInt(0)
+        ? (newTotalAssets * PRICE_PRECISION) / vault.totalShares
+        : BigInt(0);
+
     const updatedVault: Vault = {
       ...vault,
       totalAssets: newTotalAssets,
-      sharePrice:
-        vault.totalShares > BigInt(0)
-          ? newTotalAssets / vault.totalShares
-          : BigInt(0),
+      sharePrice: newSharePrice,
       tradingFeesCollected: newTradingFees,
       totalRevenue: newTotalRevenue,
       netProfit: newNetProfit,
@@ -477,15 +505,18 @@ LLPVault.Withdraw.handler(async ({ event, context }) => {
   const vault = await context.Vault.get(vaultId);
 
   if (vault) {
+    const newTotalAssets = vault.totalAssets - event.params.assets;
+    const newTotalShares = vault.totalShares - event.params.shares;
+    const newSharePrice =
+      newTotalShares > BigInt(0)
+        ? (newTotalAssets * PRICE_PRECISION) / newTotalShares
+        : BigInt(0);
+
     const updatedVault: Vault = {
       ...vault,
-      totalAssets: vault.totalAssets - event.params.assets,
-      totalShares: vault.totalShares - event.params.shares,
-      sharePrice:
-        vault.totalShares - event.params.shares > BigInt(0)
-          ? (vault.totalAssets - event.params.assets) /
-            (vault.totalShares - event.params.shares)
-          : BigInt(0),
+      totalAssets: newTotalAssets,
+      totalShares: newTotalShares,
+      sharePrice: newSharePrice,
       totalWithdrawalsAmount:
         vault.totalWithdrawalsAmount + event.params.assets,
       withdrawalCount: vault.withdrawalCount + BigInt(1),
@@ -499,26 +530,33 @@ LLPVault.Withdraw.handler(async ({ event, context }) => {
     const shareholder = await context.Shareholder.get(shareholderId);
 
     if (shareholder) {
+      const newCurrentShares = shareholder.currentShares - event.params.shares;
+      const newTotalWithdrawn =
+        shareholder.totalWithdrawn + event.params.assets;
+      const newEstimatedValue =
+        (newCurrentShares * newSharePrice) / PRICE_PRECISION;
+      const newUnrealizedPnL =
+        newEstimatedValue - shareholder.totalDeposited + newTotalWithdrawn;
+
       const updatedShareholder: Shareholder = {
         ...shareholder,
-        currentShares: shareholder.currentShares - event.params.shares,
-        estimatedValue:
-          (shareholder.currentShares - event.params.shares) *
-          updatedVault.sharePrice,
-        totalWithdrawn: shareholder.totalWithdrawn + event.params.assets,
+        currentShares: newCurrentShares,
+        estimatedValue: newEstimatedValue,
+        totalWithdrawn: newTotalWithdrawn,
         netDeposits: shareholder.netDeposits - event.params.assets,
         totalSharesBurned: shareholder.totalSharesBurned + event.params.shares,
         withdrawalCount: shareholder.withdrawalCount + BigInt(1),
-        unrealizedPnL:
-          (shareholder.currentShares - event.params.shares) *
-            updatedVault.sharePrice -
-          shareholder.totalDeposited +
-          (shareholder.totalWithdrawn + event.params.assets),
+        unrealizedPnL: newUnrealizedPnL,
         lastActivityAt: BigInt(event.block.timestamp),
       };
 
       context.Shareholder.set(updatedShareholder);
     }
+
+    const withdrawalSharePrice =
+      event.params.shares > BigInt(0)
+        ? (event.params.assets * PRICE_PRECISION) / event.params.shares
+        : BigInt(0);
 
     const vaultWithdrawal: VaultWithdrawal = {
       id: eventId,
@@ -529,10 +567,7 @@ LLPVault.Withdraw.handler(async ({ event, context }) => {
       owner: event.params.owner,
       assetsWithdrawn: event.params.assets,
       sharesBurned: event.params.shares,
-      sharePrice:
-        event.params.shares > BigInt(0)
-          ? event.params.assets / event.params.shares
-          : BigInt(0),
+      sharePrice: withdrawalSharePrice,
       vaultTotalAssets: updatedVault.totalAssets,
       vaultTotalShares: updatedVault.totalShares,
       timestamp: BigInt(event.block.timestamp),

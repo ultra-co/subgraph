@@ -116,8 +116,7 @@ type Vault {
   # Current state (real-time)
   totalAssets: BigInt!
   totalShares: BigInt!
-  sharePrice: BigInt!
-
+  sharePrice: BigInt! # Price with 18 decimals precision (divide by 1e18 for actual price)
   # Cumulative deposits/withdrawals
   totalDepositsAmount: BigInt!
   totalWithdrawalsAmount: BigInt!
@@ -166,8 +165,7 @@ type VaultRevenue {
   # Vault state snapshot after this revenue
   vaultTotalAssets: BigInt!
   vaultTotalShares: BigInt!
-  vaultSharePrice: BigInt!
-
+  vaultSharePrice: BigInt! # Price with 18 decimals precision
   # For trader PnL events (optional)
   isProfit: Boolean
 
@@ -200,9 +198,8 @@ type Shareholder {
   transfersOut: BigInt!
 
   # Average metrics
-  averageDepositPrice: BigInt!
-  unrealizedPnL: BigInt!
-
+  averageDepositPrice: BigInt! # Price with 18 decimals precision
+  unrealizedPnL: BigInt! # Profit/loss in USDC (6 decimals)
   # Timestamps
   firstDepositAt: BigInt!
   lastActivityAt: BigInt!
@@ -222,8 +219,7 @@ type VaultDeposit {
   # Deposit details
   assetsDeposited: BigInt!
   sharesReceived: BigInt!
-  sharePrice: BigInt!
-
+  sharePrice: BigInt! # Price with 18 decimals precision
   # Vault state at time of deposit
   vaultTotalAssets: BigInt!
   vaultTotalShares: BigInt!
@@ -245,8 +241,7 @@ type VaultWithdrawal {
   # Withdrawal details
   assetsWithdrawn: BigInt!
   sharesBurned: BigInt!
-  sharePrice: BigInt!
-
+  sharePrice: BigInt! # Price with 18 decimals precision
   # Vault state at time of withdrawal
   vaultTotalAssets: BigInt!
   vaultTotalShares: BigInt!
