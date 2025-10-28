@@ -32,10 +32,6 @@ jobs:
         env:
           CI: true
 
-      - name: Install generated dependencies
-        working-directory: generated
-        run: npm install --legacy-peer-deps
-
       - name: Type check
         run: npx tsc --noEmit
 
@@ -62,10 +58,6 @@ jobs:
         run: npm run codegen
         env:
           CI: true
-
-      - name: Install generated dependencies
-        working-directory: generated
-        run: npm install --legacy-peer-deps
 
       - name: TypeScript type check
         run: npx tsc --noEmit --skipLibCheck
