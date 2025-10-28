@@ -14,6 +14,14 @@ enum FundingType {
   RECEIVED
 }
 
+enum VaultRevenueType {
+  TRADING_FEE
+  LIQUIDATION_FEE
+  TRADER_LOSS
+  FUNDING_RECEIVED
+  FUNDING_PAID
+}
+
 type Trader {
   id: ID!
   address: String!
@@ -49,7 +57,7 @@ type Position {
   # Opening details
   collateral: BigInt!
   size: BigInt!
-  leverage: BigInt!
+  leverage: BigInt! # Leverage with 18 decimals precision (divide by 1e18 for actual leverage)
   isLong: Boolean!
   openTotalFee: BigInt!
   openLpFee: BigInt!
@@ -96,6 +104,149 @@ type Funding {
   market_id: String!
   fundingType: FundingType!
   amount: BigInt!
+  timestamp: BigInt!
+  blockNumber: BigInt!
+  transactionHash: String!
+}
+
+type Vault {
+  id: ID!
+  address: String!
+
+  # Current state (real-time)
+  totalAssets: BigInt!
+  totalShares: BigInt!
+  sharePrice: BigInt! # Price with 18 decimals precision (divide by 1e18 for actual price)
+  # Cumulative deposits/withdrawals
+  totalDepositsAmount: BigInt!
+  totalWithdrawalsAmount: BigInt!
+  netDeposits: BigInt!
+  depositCount: BigInt!
+  withdrawalCount: BigInt!
+
+  # Revenue breakdown (income for LPs)
+  tradingFeesCollected: BigInt!
+  liquidationFeesCollected: BigInt!
+  traderLossesCollected: BigInt!
+  fundingFeesReceived: BigInt!
+  fundingFeesPaid: BigInt!
+  netFundingFees: BigInt!
+  totalRevenue: BigInt!
+
+  # Costs (expenses for LPs)
+  traderProfitsPaid: BigInt!
+
+  # Net profit for vault
+  netProfit: BigInt!
+
+  # Fee rates (basis points)
+  depositFeeRate: BigInt!
+  withdrawalFeeRate: BigInt!
+
+  # Pause states
+  depositsPaused: Boolean!
+  withdrawalsPaused: Boolean!
+
+  # Timestamps
+  createdAt: BigInt!
+  lastUpdatedAt: BigInt!
+
+  # Relationships
+  shareholders: [Shareholder!]! @derivedFrom(field: "vault_id")
+  revenues: [VaultRevenue!]! @derivedFrom(field: "vault_id")
+}
+
+type VaultRevenue {
+  id: ID!
+  vault_id: String!
+  revenueType: VaultRevenueType!
+  amount: BigInt!
+
+  # Vault state snapshot after this revenue
+  vaultTotalAssets: BigInt!
+  vaultTotalShares: BigInt!
+  vaultSharePrice: BigInt! # Price with 18 decimals precision
+  # For trader PnL events (optional)
+  isProfit: Boolean
+
+  # Timestamps
+  timestamp: BigInt!
+  blockNumber: BigInt!
+  transactionHash: String!
+}
+
+type Shareholder {
+  id: ID!
+  vault_id: String!
+  address: String!
+
+  # Current position
+  currentShares: BigInt!
+  estimatedValue: BigInt!
+
+  # Lifetime activity
+  totalDeposited: BigInt!
+  totalWithdrawn: BigInt!
+  netDeposits: BigInt!
+  totalSharesReceived: BigInt!
+  totalSharesBurned: BigInt!
+
+  # Counts
+  depositCount: BigInt!
+  withdrawalCount: BigInt!
+  transfersIn: BigInt!
+  transfersOut: BigInt!
+
+  # Average metrics
+  averageDepositPrice: BigInt! # Price with 18 decimals precision
+  unrealizedPnL: BigInt! # Profit/loss in USDC (6 decimals)
+  # Timestamps
+  firstDepositAt: BigInt!
+  lastActivityAt: BigInt!
+
+  # Relationships
+  deposits: [VaultDeposit!]! @derivedFrom(field: "shareholder_id")
+  withdrawals: [VaultWithdrawal!]! @derivedFrom(field: "shareholder_id")
+}
+
+type VaultDeposit {
+  id: ID!
+  vault_id: String!
+  shareholder_id: String!
+  depositor: String!
+  receiver: String!
+
+  # Deposit details
+  assetsDeposited: BigInt!
+  sharesReceived: BigInt!
+  sharePrice: BigInt! # Price with 18 decimals precision
+  # Vault state at time of deposit
+  vaultTotalAssets: BigInt!
+  vaultTotalShares: BigInt!
+
+  # Timestamps
+  timestamp: BigInt!
+  blockNumber: BigInt!
+  transactionHash: String!
+}
+
+type VaultWithdrawal {
+  id: ID!
+  vault_id: String!
+  shareholder_id: String!
+  withdrawer: String!
+  receiver: String!
+  owner: String!
+
+  # Withdrawal details
+  assetsWithdrawn: BigInt!
+  sharesBurned: BigInt!
+  sharePrice: BigInt! # Price with 18 decimals precision
+  # Vault state at time of withdrawal
+  vaultTotalAssets: BigInt!
+  vaultTotalShares: BigInt!
+
+  # Timestamps
   timestamp: BigInt!
   blockNumber: BigInt!
   transactionHash: String!

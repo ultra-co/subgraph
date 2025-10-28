@@ -14,6 +14,17 @@ import {
   Funding,
 } from "generated";
 
+/**
+ * Leverage precision constant for accurate decimal calculations with BigInt.
+ *
+ * Leverage can be fractional (e.g., 10.5x, 7.25x), so we use 18 decimal precision:
+ * - Store: leverage = (size * LEVERAGE_PRECISION) / collateral
+ * - Display: actualLeverage = leverage / 1e18
+ *
+ * Example: 10.5x leverage is stored as 10.5e18 = 10,500,000,000,000,000,000
+ */
+const LEVERAGE_PRECISION = BigInt(1e18);
+
 LiquidRouter.ExpiredPositionSettled.handler(async ({ event, context }) => {
   const eventId = `${event.chainId}_${event.block.number}_${event.logIndex}`;
   const eventEntity: LiquidRouter_ExpiredPositionSettled = {
@@ -326,10 +337,10 @@ LiquidRouter.PositionOpened.handler(async ({ event, context }) => {
   context.Trader.set(updatedTrader);
 
   // Create Position entity
-  // Calculate leverage: size / collateral
+  // Calculate leverage: (size * LEVERAGE_PRECISION) / collateral
   const leverage =
     event.params.collateral > BigInt(0)
-      ? event.params.size / event.params.collateral
+      ? (event.params.size * LEVERAGE_PRECISION) / event.params.collateral
       : BigInt(0);
 
   const position: Position = {
