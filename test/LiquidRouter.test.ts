@@ -6,9 +6,12 @@ import {
   LiquidRouter_FundingPaid,
   LiquidRouter_FundingReceived,
   LiquidRouter_ExpiredPositionSettled,
+  LiquidRouter_MarginAdded,
+  LiquidRouter_MarginRemoved,
   Position,
   Trader,
   Funding,
+  MarginUpdate,
 } from "../generated";
 const { MockDb, LiquidRouter } = TestHelpers;
 
@@ -497,6 +500,447 @@ describe("LiquidRouter contract tests", () => {
 
       assert.strictEqual(actualTrader?.openPositions, BigInt(0));
       assert.strictEqual(actualTrader?.closedPositions, BigInt(1));
+    });
+  });
+
+  describe("MarginAdded event", () => {
+    it("should add margin to existing position", async () => {
+      let mockDb = MockDb.createMockDb();
+
+      const openEvent = LiquidRouter.PositionOpened.createMockEvent({
+        user: trader,
+        positionKey,
+        marketId,
+        collateral: BigInt(1000e6),
+        size: BigInt(10000e6),
+        isLong: true,
+        totalFee: BigInt(10e6),
+        lpFee: BigInt(8e6),
+        protocolFee: BigInt(2e6),
+        mockEventData: { block: { number: 1000 } },
+      });
+
+      mockDb = await LiquidRouter.PositionOpened.processEvent({
+        event: openEvent,
+        mockDb,
+      });
+
+      const marginEvent = LiquidRouter.MarginAdded.createMockEvent({
+        user: trader,
+        positionKey,
+        additionalCollateral: BigInt(500e6),
+        newTotalCollateral: BigInt(1500e6),
+        mockEventData: { block: { number: 1001 } },
+      });
+
+      mockDb = await LiquidRouter.MarginAdded.processEvent({
+        event: marginEvent,
+        mockDb,
+      });
+
+      const position = mockDb.entities.Position.get(
+        `${chainId}_${positionKey}`
+      );
+      const traderEntity = mockDb.entities.Trader.get(`${chainId}_${trader}`);
+      const marginUpdate = mockDb.entities.MarginUpdate.get(
+        `${chainId}_${marginEvent.block.number}_${marginEvent.logIndex}`
+      );
+
+      assert.strictEqual(position?.collateral, BigInt(1500e6));
+      assert.strictEqual(traderEntity?.totalVolume, BigInt(10500e6));
+      assert.ok(marginUpdate, "MarginUpdate should be created");
+      assert.strictEqual(marginUpdate?.updateType, "ADDED");
+      assert.strictEqual(marginUpdate?.amount, BigInt(500e6));
+      assert.strictEqual(marginUpdate?.newTotalCollateral, BigInt(1500e6));
+    });
+
+    it("should handle multiple margin additions", async () => {
+      let mockDb = MockDb.createMockDb();
+
+      mockDb = await LiquidRouter.PositionOpened.processEvent({
+        event: LiquidRouter.PositionOpened.createMockEvent({
+          user: trader,
+          positionKey,
+          marketId,
+          collateral: BigInt(1000e6),
+          size: BigInt(10000e6),
+          isLong: true,
+          totalFee: BigInt(10e6),
+          lpFee: BigInt(8e6),
+          protocolFee: BigInt(2e6),
+          mockEventData: { block: { number: 1000 } },
+        }),
+        mockDb,
+      });
+
+      mockDb = await LiquidRouter.MarginAdded.processEvent({
+        event: LiquidRouter.MarginAdded.createMockEvent({
+          user: trader,
+          positionKey,
+          additionalCollateral: BigInt(300e6),
+          newTotalCollateral: BigInt(1300e6),
+          mockEventData: { block: { number: 1001 } },
+        }),
+        mockDb,
+      });
+
+      mockDb = await LiquidRouter.MarginAdded.processEvent({
+        event: LiquidRouter.MarginAdded.createMockEvent({
+          user: trader,
+          positionKey,
+          additionalCollateral: BigInt(200e6),
+          newTotalCollateral: BigInt(1500e6),
+          mockEventData: { block: { number: 1002 } },
+        }),
+        mockDb,
+      });
+
+      const position = mockDb.entities.Position.get(
+        `${chainId}_${positionKey}`
+      );
+      const traderEntity = mockDb.entities.Trader.get(`${chainId}_${trader}`);
+
+      assert.strictEqual(position?.collateral, BigInt(1500e6));
+      assert.strictEqual(traderEntity?.totalVolume, BigInt(10500e6));
+    });
+
+    it("should not add margin to closed position", async () => {
+      let mockDb = MockDb.createMockDb();
+
+      mockDb = await LiquidRouter.PositionOpened.processEvent({
+        event: LiquidRouter.PositionOpened.createMockEvent({
+          user: trader,
+          positionKey,
+          marketId,
+          collateral: BigInt(1000e6),
+          size: BigInt(10000e6),
+          isLong: true,
+          totalFee: BigInt(10e6),
+          lpFee: BigInt(8e6),
+          protocolFee: BigInt(2e6),
+          mockEventData: { block: { number: 1000 } },
+        }),
+        mockDb,
+      });
+
+      mockDb = await LiquidRouter.PositionClosed.processEvent({
+        event: LiquidRouter.PositionClosed.createMockEvent({
+          user: trader,
+          positionKey,
+          pnl: BigInt(100e6),
+          totalFee: BigInt(10e6),
+          lpFee: BigInt(8e6),
+          protocolFee: BigInt(2e6),
+          netReturn: BigInt(90e6),
+          mockEventData: { block: { number: 1001 } },
+        }),
+        mockDb,
+      });
+
+      mockDb = await LiquidRouter.MarginAdded.processEvent({
+        event: LiquidRouter.MarginAdded.createMockEvent({
+          user: trader,
+          positionKey,
+          additionalCollateral: BigInt(500e6),
+          newTotalCollateral: BigInt(1500e6),
+          mockEventData: { block: { number: 1002 } },
+        }),
+        mockDb,
+      });
+
+      const position = mockDb.entities.Position.get(
+        `${chainId}_${positionKey}`
+      );
+
+      assert.strictEqual(position?.collateral, BigInt(1000e6));
+    });
+
+    it("should not add margin to non-existent position", async () => {
+      const mockDb = MockDb.createMockDb();
+      const nonExistentKey =
+        "0xbbbb000000000000000000000000000000000000000000000000000000000000";
+
+      const marginEvent = LiquidRouter.MarginAdded.createMockEvent({
+        user: trader,
+        positionKey: nonExistentKey,
+        additionalCollateral: BigInt(500e6),
+        newTotalCollateral: BigInt(1500e6),
+      });
+
+      const mockDbUpdated = await LiquidRouter.MarginAdded.processEvent({
+        event: marginEvent,
+        mockDb,
+      });
+
+      const position = mockDbUpdated.entities.Position.get(
+        `${chainId}_${nonExistentKey}`
+      );
+
+      assert.strictEqual(position, undefined);
+    });
+  });
+
+  describe("MarginRemoved event", () => {
+    it("should remove margin from existing position", async () => {
+      let mockDb = MockDb.createMockDb();
+
+      mockDb = await LiquidRouter.PositionOpened.processEvent({
+        event: LiquidRouter.PositionOpened.createMockEvent({
+          user: trader,
+          positionKey,
+          marketId,
+          collateral: BigInt(1000e6),
+          size: BigInt(10000e6),
+          isLong: true,
+          totalFee: BigInt(10e6),
+          lpFee: BigInt(8e6),
+          protocolFee: BigInt(2e6),
+          mockEventData: { block: { number: 1000 } },
+        }),
+        mockDb,
+      });
+
+      const marginEvent = LiquidRouter.MarginRemoved.createMockEvent({
+        user: trader,
+        positionKey,
+        collateralRemoved: BigInt(300e6),
+        newTotalCollateral: BigInt(700e6),
+        mockEventData: { block: { number: 1001 } },
+      });
+
+      mockDb = await LiquidRouter.MarginRemoved.processEvent({
+        event: marginEvent,
+        mockDb,
+      });
+
+      const position = mockDb.entities.Position.get(
+        `${chainId}_${positionKey}`
+      );
+      const traderEntity = mockDb.entities.Trader.get(`${chainId}_${trader}`);
+      const marginUpdate = mockDb.entities.MarginUpdate.get(
+        `${chainId}_${marginEvent.block.number}_${marginEvent.logIndex}`
+      );
+
+      assert.strictEqual(position?.collateral, BigInt(700e6));
+      assert.strictEqual(traderEntity?.totalVolume, BigInt(9700e6));
+      assert.ok(marginUpdate, "MarginUpdate should be created");
+      assert.strictEqual(marginUpdate?.updateType, "REMOVED");
+      assert.strictEqual(marginUpdate?.amount, BigInt(300e6));
+    });
+
+    it("should prevent negative totalVolume on margin removal", async () => {
+      let mockDb = MockDb.createMockDb();
+
+      mockDb = await LiquidRouter.PositionOpened.processEvent({
+        event: LiquidRouter.PositionOpened.createMockEvent({
+          user: trader,
+          positionKey,
+          marketId,
+          collateral: BigInt(1000e6),
+          size: BigInt(10000e6),
+          isLong: true,
+          totalFee: BigInt(10e6),
+          lpFee: BigInt(8e6),
+          protocolFee: BigInt(2e6),
+        }),
+        mockDb,
+      });
+
+      mockDb = await LiquidRouter.MarginRemoved.processEvent({
+        event: LiquidRouter.MarginRemoved.createMockEvent({
+          user: trader,
+          positionKey,
+          collateralRemoved: BigInt(15000e6),
+          newTotalCollateral: BigInt(500e6),
+        }),
+        mockDb,
+      });
+
+      const traderEntity = mockDb.entities.Trader.get(`${chainId}_${trader}`);
+
+      assert.ok(
+        (traderEntity?.totalVolume || 0) >= BigInt(0),
+        "Total volume should not go negative"
+      );
+    });
+
+    it("should handle margin add then remove sequence", async () => {
+      let mockDb = MockDb.createMockDb();
+
+      mockDb = await LiquidRouter.PositionOpened.processEvent({
+        event: LiquidRouter.PositionOpened.createMockEvent({
+          user: trader,
+          positionKey,
+          marketId,
+          collateral: BigInt(1000e6),
+          size: BigInt(10000e6),
+          isLong: true,
+          totalFee: BigInt(10e6),
+          lpFee: BigInt(8e6),
+          protocolFee: BigInt(2e6),
+          mockEventData: { block: { number: 1000 } },
+        }),
+        mockDb,
+      });
+
+      mockDb = await LiquidRouter.MarginAdded.processEvent({
+        event: LiquidRouter.MarginAdded.createMockEvent({
+          user: trader,
+          positionKey,
+          additionalCollateral: BigInt(500e6),
+          newTotalCollateral: BigInt(1500e6),
+          mockEventData: { block: { number: 1001 } },
+        }),
+        mockDb,
+      });
+
+      mockDb = await LiquidRouter.MarginRemoved.processEvent({
+        event: LiquidRouter.MarginRemoved.createMockEvent({
+          user: trader,
+          positionKey,
+          collateralRemoved: BigInt(200e6),
+          newTotalCollateral: BigInt(1300e6),
+          mockEventData: { block: { number: 1002 } },
+        }),
+        mockDb,
+      });
+
+      const position = mockDb.entities.Position.get(
+        `${chainId}_${positionKey}`
+      );
+      const traderEntity = mockDb.entities.Trader.get(`${chainId}_${trader}`);
+
+      assert.strictEqual(position?.collateral, BigInt(1300e6));
+      assert.strictEqual(traderEntity?.totalVolume, BigInt(10300e6));
+    });
+
+    it("should not remove margin from closed position", async () => {
+      let mockDb = MockDb.createMockDb();
+
+      mockDb = await LiquidRouter.PositionOpened.processEvent({
+        event: LiquidRouter.PositionOpened.createMockEvent({
+          user: trader,
+          positionKey,
+          marketId,
+          collateral: BigInt(1000e6),
+          size: BigInt(10000e6),
+          isLong: true,
+          totalFee: BigInt(10e6),
+          lpFee: BigInt(8e6),
+          protocolFee: BigInt(2e6),
+          mockEventData: { block: { number: 1000 } },
+        }),
+        mockDb,
+      });
+
+      mockDb = await LiquidRouter.PositionClosed.processEvent({
+        event: LiquidRouter.PositionClosed.createMockEvent({
+          user: trader,
+          positionKey,
+          pnl: BigInt(100e6),
+          totalFee: BigInt(10e6),
+          lpFee: BigInt(8e6),
+          protocolFee: BigInt(2e6),
+          netReturn: BigInt(90e6),
+          mockEventData: { block: { number: 1001 } },
+        }),
+        mockDb,
+      });
+
+      mockDb = await LiquidRouter.MarginRemoved.processEvent({
+        event: LiquidRouter.MarginRemoved.createMockEvent({
+          user: trader,
+          positionKey,
+          collateralRemoved: BigInt(300e6),
+          newTotalCollateral: BigInt(700e6),
+          mockEventData: { block: { number: 1002 } },
+        }),
+        mockDb,
+      });
+
+      const position = mockDb.entities.Position.get(
+        `${chainId}_${positionKey}`
+      );
+
+      assert.strictEqual(position?.collateral, BigInt(1000e6));
+    });
+
+    it("should update lastTradedAt on margin changes", async () => {
+      let mockDb = MockDb.createMockDb();
+
+      mockDb = await LiquidRouter.PositionOpened.processEvent({
+        event: LiquidRouter.PositionOpened.createMockEvent({
+          user: trader,
+          positionKey,
+          marketId,
+          collateral: BigInt(1000e6),
+          size: BigInt(10000e6),
+          isLong: true,
+          totalFee: BigInt(10e6),
+          lpFee: BigInt(8e6),
+          protocolFee: BigInt(2e6),
+          mockEventData: { block: { number: 1000, timestamp: 1000000 } },
+        }),
+        mockDb,
+      });
+
+      mockDb = await LiquidRouter.MarginAdded.processEvent({
+        event: LiquidRouter.MarginAdded.createMockEvent({
+          user: trader,
+          positionKey,
+          additionalCollateral: BigInt(500e6),
+          newTotalCollateral: BigInt(1500e6),
+          mockEventData: { block: { number: 1001, timestamp: 2000000 } },
+        }),
+        mockDb,
+      });
+
+      const traderEntity = mockDb.entities.Trader.get(`${chainId}_${trader}`);
+
+      assert.strictEqual(traderEntity?.lastTradedAt, BigInt(2000000));
+    });
+
+    it("should create MarginUpdate with correct position and trader links", async () => {
+      let mockDb = MockDb.createMockDb();
+
+      mockDb = await LiquidRouter.PositionOpened.processEvent({
+        event: LiquidRouter.PositionOpened.createMockEvent({
+          user: trader,
+          positionKey,
+          marketId,
+          collateral: BigInt(1000e6),
+          size: BigInt(10000e6),
+          isLong: true,
+          totalFee: BigInt(10e6),
+          lpFee: BigInt(8e6),
+          protocolFee: BigInt(2e6),
+          mockEventData: { block: { number: 1000 } },
+        }),
+        mockDb,
+      });
+
+      const marginEvent = LiquidRouter.MarginAdded.createMockEvent({
+        user: trader,
+        positionKey,
+        additionalCollateral: BigInt(500e6),
+        newTotalCollateral: BigInt(1500e6),
+        mockEventData: { block: { number: 1001 } },
+      });
+
+      mockDb = await LiquidRouter.MarginAdded.processEvent({
+        event: marginEvent,
+        mockDb,
+      });
+
+      const marginUpdate = mockDb.entities.MarginUpdate.get(
+        `${chainId}_${marginEvent.block.number}_${marginEvent.logIndex}`
+      );
+
+      assert.strictEqual(
+        marginUpdate?.position_id,
+        `${chainId}_${positionKey}`
+      );
+      assert.strictEqual(marginUpdate?.trader_id, `${chainId}_${trader}`);
     });
   });
 });

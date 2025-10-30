@@ -6,7 +6,7 @@ networks:
     contracts:
       - name: ProbabilityOracle
         address:
-          - 0x56B6f895EEcd49a72b7920C697A6bff6655644ad
+          - 0x0AF43F745d3Db1e184b72A6dA4023F131f6bFbD0
         handler: src/ProbabilityOracle.ts
         events:
           - event: MarketSourceInitialized(bytes32 indexed marketId, string sourcePlatform, string sourceMarketId)
@@ -15,7 +15,7 @@ networks:
           - event: TWAPPeriodUpdated(uint32 newPeriod)
       - name: LLPVault
         address:
-          - 0x994b1561b2ad9b83FC9112969278B251F7e42FC1
+          - 0xBCF9CEAA41165AfCD485C9dA224a9b99BA9a183b
         handler: src/LLPVault.ts
         events:
           - event: Deposit(address indexed by, address indexed owner, uint256 assets, uint256 shares)
@@ -48,13 +48,13 @@ networks:
           - event: WithdrawalsPaused(bool paused)
       - name: FundingRateManager
         address:
-          - 0x2abD267abd0BfcE6135761A07E3B4012C9E0D5a1
+          - 0x35dA26398AB9AE43741397E8f32a54184b7AafF7
         handler: src/FundingRateManager.ts
         events:
           - event: FundingRateCalculated(bytes32 indexed marketId, int256 fundingRate, int256 skew, uint256 timestamp)
       - name: LiquidationEngine
         address:
-          - 0xc0aEDab7CAe28b72be8313dc6b5508F200677ef5
+          - 0xED20C313663E75f644562483E8d85267093fd5c9
         handler: src/LiquidationEngine.ts
         events:
           - event: KeeperRewardsClaimed(address indexed keeper, uint256 amount)
@@ -65,7 +65,7 @@ networks:
                 - hash
       - name: LiquidRouter
         address:
-          - 0x24B2dAc2044f4DBd5512C8095B8592aCAC5BBe58
+          - 0x095F6037892CAe2a43a7cBBA1FfD133F76BEC663
         handler: src/LiquidRouter.ts
         events:
           - event: ExpiredPositionSettled(bytes32 indexed positionKey, address indexed trader, bytes32 indexed marketId, int256 pnl, int256 netReturn)
@@ -77,6 +77,14 @@ networks:
               transaction_fields:
                 - hash
           - event: FundingReceived(bytes32 indexed positionKey, address indexed trader, bytes32 indexed marketId, int256 amount)
+            field_selection:
+              transaction_fields:
+                - hash
+          - event: MarginAdded(address indexed user, bytes32 indexed positionKey, uint128 additionalCollateral, uint128 newTotalCollateral)
+            field_selection:
+              transaction_fields:
+                - hash
+          - event: MarginRemoved(address indexed user, bytes32 indexed positionKey, uint128 collateralRemoved, uint128 newTotalCollateral)
             field_selection:
               transaction_fields:
                 - hash
@@ -97,7 +105,7 @@ networks:
                 - hash
       - name: MarketFactory
         address:
-          - 0xB8aA1dB23535307a4A7384Fbb3564ac371b7122d
+          - 0xEcc14021f2742b2BCf23d6d22A1435736ED0f386
         handler: src/MarketFactory.ts
         events:
           - event: MarketCreated(bytes32 indexed marketId, string name, string sourcePlatform, string sourceMarketId, uint64 expiryTimestamp, address indexed creator)
