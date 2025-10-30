@@ -3,6 +3,8 @@ import {
   LiquidRouter_ExpiredPositionSettled,
   LiquidRouter_FundingPaid,
   LiquidRouter_FundingReceived,
+  LiquidRouter_MarginAdded,
+  LiquidRouter_MarginRemoved,
   LiquidRouter_OwnershipHandoverCanceled,
   LiquidRouter_OwnershipHandoverRequested,
   LiquidRouter_OwnershipTransferred,
@@ -12,6 +14,7 @@ import {
   Position,
   Trader,
   Funding,
+  MarginUpdate,
 } from "generated";
 
 /**
@@ -153,6 +156,109 @@ LiquidRouter.FundingReceived.handler(async ({ event, context }) => {
       collateral: position.collateral + event.params.amount,
     };
     context.Position.set(updatedPosition);
+  }
+});
+
+LiquidRouter.MarginAdded.handler(async ({ event, context }) => {
+  const eventId = `${event.chainId}_${event.block.number}_${event.logIndex}`;
+  const eventEntity: LiquidRouter_MarginAdded = {
+    id: eventId,
+    user: event.params.user,
+    positionKey: event.params.positionKey,
+    additionalCollateral: event.params.additionalCollateral,
+    newTotalCollateral: event.params.newTotalCollateral,
+  };
+
+  context.LiquidRouter_MarginAdded.set(eventEntity);
+
+  const positionId = `${event.chainId}_${event.params.positionKey}`;
+  const position = await context.Position.get(positionId);
+
+  if (position && !position.closed) {
+    const updatedPosition: Position = {
+      ...position,
+      collateral: event.params.newTotalCollateral,
+    };
+
+    context.Position.set(updatedPosition);
+
+    const trader = await context.Trader.get(position.trader_id);
+    if (trader) {
+      const updatedTrader: Trader = {
+        ...trader,
+        totalVolume: trader.totalVolume + event.params.additionalCollateral,
+        lastTradedAt: BigInt(event.block.timestamp),
+      };
+      context.Trader.set(updatedTrader);
+    }
+
+    const marginUpdate: MarginUpdate = {
+      id: eventId,
+      position_id: positionId,
+      trader_id: position.trader_id,
+      updateType: "ADDED",
+      amount: event.params.additionalCollateral,
+      newTotalCollateral: event.params.newTotalCollateral,
+      timestamp: BigInt(event.block.timestamp),
+      blockNumber: BigInt(event.block.number),
+      transactionHash: event.transaction.hash,
+    };
+
+    context.MarginUpdate.set(marginUpdate);
+  }
+});
+
+LiquidRouter.MarginRemoved.handler(async ({ event, context }) => {
+  const eventId = `${event.chainId}_${event.block.number}_${event.logIndex}`;
+  const eventEntity: LiquidRouter_MarginRemoved = {
+    id: eventId,
+    user: event.params.user,
+    positionKey: event.params.positionKey,
+    collateralRemoved: event.params.collateralRemoved,
+    newTotalCollateral: event.params.newTotalCollateral,
+  };
+
+  context.LiquidRouter_MarginRemoved.set(eventEntity);
+
+  const positionId = `${event.chainId}_${event.params.positionKey}`;
+  const position = await context.Position.get(positionId);
+
+  if (position && !position.closed) {
+    const updatedPosition: Position = {
+      ...position,
+      collateral: event.params.newTotalCollateral,
+    };
+
+    context.Position.set(updatedPosition);
+
+    const trader = await context.Trader.get(position.trader_id);
+    if (trader) {
+      const newTotalVolume =
+        trader.totalVolume > event.params.collateralRemoved
+          ? trader.totalVolume - event.params.collateralRemoved
+          : BigInt(0);
+
+      const updatedTrader: Trader = {
+        ...trader,
+        totalVolume: newTotalVolume,
+        lastTradedAt: BigInt(event.block.timestamp),
+      };
+      context.Trader.set(updatedTrader);
+    }
+
+    const marginUpdate: MarginUpdate = {
+      id: eventId,
+      position_id: positionId,
+      trader_id: position.trader_id,
+      updateType: "REMOVED",
+      amount: event.params.collateralRemoved,
+      newTotalCollateral: event.params.newTotalCollateral,
+      timestamp: BigInt(event.block.timestamp),
+      blockNumber: BigInt(event.block.number),
+      transactionHash: event.transaction.hash,
+    };
+
+    context.MarginUpdate.set(marginUpdate);
   }
 });
 

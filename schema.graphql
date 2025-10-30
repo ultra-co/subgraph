@@ -22,6 +22,11 @@ enum VaultRevenueType {
   FUNDING_PAID
 }
 
+enum MarginUpdateType {
+  ADDED
+  REMOVED
+}
+
 type Trader {
   id: ID!
   address: String!
@@ -95,6 +100,9 @@ type Position {
 
   # Funding payments
   fundings: [Funding!]! @derivedFrom(field: "position_id")
+
+  # Margin updates
+  marginUpdates: [MarginUpdate!]! @derivedFrom(field: "position_id")
 }
 
 type Funding {
@@ -104,6 +112,18 @@ type Funding {
   market_id: String!
   fundingType: FundingType!
   amount: BigInt!
+  timestamp: BigInt!
+  blockNumber: BigInt!
+  transactionHash: String!
+}
+
+type MarginUpdate {
+  id: ID!
+  position_id: String!
+  trader_id: String!
+  updateType: MarginUpdateType!
+  amount: BigInt!
+  newTotalCollateral: BigInt!
   timestamp: BigInt!
   blockNumber: BigInt!
   transactionHash: String!
@@ -349,6 +369,22 @@ type LiquidRouter_FundingReceived {
   trader: String!
   marketId: String!
   amount: BigInt!
+}
+
+type LiquidRouter_MarginAdded {
+  id: ID!
+  user: String!
+  positionKey: String!
+  additionalCollateral: BigInt!
+  newTotalCollateral: BigInt!
+}
+
+type LiquidRouter_MarginRemoved {
+  id: ID!
+  user: String!
+  positionKey: String!
+  collateralRemoved: BigInt!
+  newTotalCollateral: BigInt!
 }
 
 type LiquidRouter_OwnershipHandoverCanceled {
