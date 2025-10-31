@@ -27,6 +27,16 @@ enum MarginUpdateType {
   REMOVED
 }
 
+enum CandleInterval {
+  ONE_MINUTE
+  FIVE_MINUTES
+  FIFTEEN_MINUTES
+  ONE_HOUR
+  FOUR_HOURS
+  TWELVE_HOURS
+  ONE_DAY
+}
+
 type Trader {
   id: ID!
   address: String!
@@ -35,9 +45,16 @@ type Trader {
   closedPositions: BigInt!
   liquidatedPositions: BigInt!
   totalVolume: BigInt!
+
+  # PnL tracking (real-time)
+  currentUnrealizedPnl: BigInt!
+  currentRealizedPnl: BigInt!
+  allTimePnl: BigInt!
+
   firstTradedAt: BigInt!
   lastTradedAt: BigInt!
   fundings: [Funding!]! @derivedFrom(field: "trader_id")
+  pnlSnapshots: [TraderPnLSnapshot!]! @derivedFrom(field: "trader_id")
 }
 
 type Market {
@@ -51,6 +68,48 @@ type Market {
   createdAt: BigInt!
   blockNumber: BigInt!
   transactionHash: String!
+
+  # Current prices (real-time)
+  currentPrice: BigInt!
+  indexPrice: BigInt
+  lastPriceUpdate: BigInt!
+
+  # Price history
+  priceObservations: [PriceObservation!]! @derivedFrom(field: "market_id")
+  priceCandles: [PriceCandle!]! @derivedFrom(field: "market_id")
+}
+
+type PriceObservation {
+  id: ID!
+  market_id: String!
+  price: BigInt!
+  indexPrice: BigInt
+  timestamp: BigInt!
+  blockNumber: BigInt!
+  transactionHash: String!
+}
+
+type PriceCandle {
+  id: ID!
+  market_id: String!
+  interval: CandleInterval!
+
+  # OHLC data (spot prices from oracle events)
+  openPrice: BigInt!
+  highPrice: BigInt!
+  lowPrice: BigInt!
+  closePrice: BigInt!
+
+  # Index price OHLC (from getPrice() contract calls)
+  indexOpen: BigInt
+  indexHigh: BigInt
+  indexLow: BigInt
+  indexClose: BigInt
+
+  # Metadata
+  observationCount: BigInt!
+  periodStart: BigInt!
+  periodEnd: BigInt!
 }
 
 type Position {
@@ -71,6 +130,12 @@ type Position {
   openBlockNumber: BigInt!
   openTransactionHash: String!
 
+  # Opening price (for PnL calculation)
+  entryIndexPrice: BigInt!
+
+  # Real-time PnL (updated on every price change)
+  currentPnl: BigInt!
+  currentPnlPercentage: BigInt! # 18 decimals precision
   # Closing details (nullable until position is closed)
   pnl: BigInt
   closeTotalFee: BigInt
@@ -103,6 +168,9 @@ type Position {
 
   # Margin updates
   marginUpdates: [MarginUpdate!]! @derivedFrom(field: "position_id")
+
+  # PnL history (for charting)
+  pnlSnapshots: [PositionPnLSnapshot!]! @derivedFrom(field: "position_id")
 }
 
 type Funding {
@@ -127,6 +195,28 @@ type MarginUpdate {
   timestamp: BigInt!
   blockNumber: BigInt!
   transactionHash: String!
+}
+
+type PositionPnLSnapshot {
+  id: ID!
+  position_id: String!
+  trader_id: String!
+  pnl: BigInt!
+  pnlPercentage: BigInt! # 18 decimals precision
+  indexPrice: BigInt!
+  timestamp: BigInt!
+  blockNumber: BigInt!
+}
+
+type TraderPnLSnapshot {
+  id: ID!
+  trader_id: String!
+  totalPnl: BigInt!
+  realizedPnl: BigInt!
+  unrealizedPnl: BigInt!
+  positionCount: BigInt!
+  timestamp: BigInt!
+  blockNumber: BigInt!
 }
 
 type Vault {
