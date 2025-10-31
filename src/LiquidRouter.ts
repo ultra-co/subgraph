@@ -15,7 +15,9 @@ import {
   Trader,
   Funding,
   MarginUpdate,
+  Market,
 } from "generated";
+import { getIndexPrice } from "./effects/getPrice";
 
 /**
  * Leverage precision constant for accurate decimal calculations with BigInt.
@@ -59,18 +61,24 @@ LiquidRouter.ExpiredPositionSettled.handler(async ({ event, context }) => {
 
     context.Position.set(updatedPosition);
 
-    // Update trader stats
+    // Update trader stats with realized PnL
     const trader = await context.Trader.get(position.trader_id);
     if (trader) {
       const newOpenPositions =
         trader.openPositions > BigInt(0)
           ? trader.openPositions - BigInt(1)
           : BigInt(0);
+      const newRealizedPnl = trader.currentRealizedPnl + event.params.pnl;
+      const newUnrealizedPnl =
+        trader.currentUnrealizedPnl - position.currentPnl;
 
       const updatedTrader: Trader = {
         ...trader,
         openPositions: newOpenPositions,
         closedPositions: trader.closedPositions + BigInt(1),
+        currentRealizedPnl: newRealizedPnl,
+        currentUnrealizedPnl: newUnrealizedPnl,
+        allTimePnl: newRealizedPnl + newUnrealizedPnl,
         lastTradedAt: BigInt(event.block.timestamp),
       };
       context.Trader.set(updatedTrader);
@@ -320,18 +328,22 @@ LiquidRouter.PositionAutoClosedInsufficientFunding.handler(
 
       context.Position.set(updatedPosition);
 
-      // Update trader stats
+      // Update trader stats with realized PnL (no PnL in insufficient funding event)
       const trader = await context.Trader.get(position.trader_id);
       if (trader) {
         const newOpenPositions =
           trader.openPositions > BigInt(0)
             ? trader.openPositions - BigInt(1)
             : BigInt(0);
+        const newUnrealizedPnl =
+          trader.currentUnrealizedPnl - position.currentPnl;
 
         const updatedTrader: Trader = {
           ...trader,
           openPositions: newOpenPositions,
           closedPositions: trader.closedPositions + BigInt(1),
+          currentUnrealizedPnl: newUnrealizedPnl,
+          allTimePnl: trader.currentRealizedPnl + newUnrealizedPnl,
           lastTradedAt: BigInt(event.block.timestamp),
         };
         context.Trader.set(updatedTrader);
@@ -376,18 +388,24 @@ LiquidRouter.PositionClosed.handler(async ({ event, context }) => {
 
     context.Position.set(updatedPosition);
 
-    // Update trader stats
+    // Update trader stats with realized PnL
     const trader = await context.Trader.get(position.trader_id);
     if (trader) {
       const newOpenPositions =
         trader.openPositions > BigInt(0)
           ? trader.openPositions - BigInt(1)
           : BigInt(0);
+      const newRealizedPnl = trader.currentRealizedPnl + event.params.pnl;
+      const newUnrealizedPnl =
+        trader.currentUnrealizedPnl - position.currentPnl;
 
       const updatedTrader: Trader = {
         ...trader,
         openPositions: newOpenPositions,
         closedPositions: trader.closedPositions + BigInt(1),
+        currentRealizedPnl: newRealizedPnl,
+        currentUnrealizedPnl: newUnrealizedPnl,
+        allTimePnl: newRealizedPnl + newUnrealizedPnl,
         lastTradedAt: BigInt(event.block.timestamp),
       };
       context.Trader.set(updatedTrader);
@@ -426,6 +444,9 @@ LiquidRouter.PositionOpened.handler(async ({ event, context }) => {
       closedPositions: BigInt(0),
       liquidatedPositions: BigInt(0),
       totalVolume: BigInt(0),
+      currentUnrealizedPnl: BigInt(0),
+      currentRealizedPnl: BigInt(0),
+      allTimePnl: BigInt(0),
       firstTradedAt: BigInt(event.block.timestamp),
       lastTradedAt: BigInt(event.block.timestamp),
     };
@@ -442,7 +463,18 @@ LiquidRouter.PositionOpened.handler(async ({ event, context }) => {
 
   context.Trader.set(updatedTrader);
 
-  // Create Position entity
+  const marketFullId = `${event.chainId}_${event.params.marketId}`;
+  const market = await context.Market.get(marketFullId);
+
+  const indexPriceResult = await context.effect(getIndexPrice, {
+    marketId: event.params.marketId,
+    blockNumber: event.block.number,
+  });
+
+  const entryIndexPrice = indexPriceResult
+    ? BigInt(indexPriceResult)
+    : BigInt(0);
+
   // Calculate leverage: (size * LEVERAGE_PRECISION) / collateral
   const leverage =
     event.params.collateral > BigInt(0)
@@ -465,6 +497,10 @@ LiquidRouter.PositionOpened.handler(async ({ event, context }) => {
     openedAt: BigInt(event.block.timestamp),
     openBlockNumber: BigInt(event.block.number),
     openTransactionHash: event.transaction.hash,
+
+    entryIndexPrice: entryIndexPrice,
+    currentPnl: BigInt(0),
+    currentPnlPercentage: BigInt(0),
 
     pnl: undefined,
     closeTotalFee: undefined,
