@@ -32,6 +32,9 @@ jobs:
         env:
           CI: true
 
+      - name: Build ReScript files
+        run: cd generated && npx rescript
+
       - name: Type check
         run: npx tsc --noEmit
 
@@ -58,6 +61,9 @@ jobs:
         run: npm run codegen
         env:
           CI: true
+
+      - name: Build ReScript files
+        run: cd generated && npx rescript
 
       - name: TypeScript type check
         run: npx tsc --noEmit --skipLibCheck
