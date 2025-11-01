@@ -74,7 +74,7 @@ ProbabilityOracle.PriceUpdated.handler(async ({ event, context }) => {
     ...market,
     currentPrice: event.params.price,
     indexPrice,
-    lastPriceUpdate: BigInt(event.block.timestamp),
+    lastPriceUpdate: event.params.timestamp,
   };
 
   context.Market.set(updatedMarket);
@@ -100,10 +100,6 @@ ProbabilityOracle.PriceUpdated.handler(async ({ event, context }) => {
       event.params.price,
       indexPrice
     );
-  }
-
-  if (indexPrice) {
-    await updateOpenPositionsPnL(context, marketFullId, indexPrice, event);
   }
 });
 
@@ -158,79 +154,6 @@ async function updateCandle(
   }
 
   context.PriceCandle.set(candle);
-}
-
-async function updateOpenPositionsPnL(
-  context: any,
-  marketId: string,
-  indexPrice: bigint,
-  event: any
-) {
-  const traderPnlMap = new Map<string, bigint>();
-
-  const positionsArray = context.Position.getWhere?.market_id?.eq?.(marketId);
-
-  if (!positionsArray) return;
-
-  for (const position of positionsArray) {
-    if (position.closed) continue;
-
-    const pnl = calculatePositionPnl(position, indexPrice);
-    const pnlPercentage = calculatePnlPercentage(pnl, position.collateral);
-
-    const updatedPosition: Position = {
-      ...position,
-      currentPnl: pnl,
-      currentPnlPercentage: pnlPercentage,
-    };
-
-    context.Position.set(updatedPosition);
-
-    const pnlSnapshot: PositionPnLSnapshot = {
-      id: `${position.id}_${event.block.timestamp}`,
-      position_id: position.id,
-      trader_id: position.trader_id,
-      pnl: pnl,
-      pnlPercentage: pnlPercentage,
-      indexPrice: indexPrice,
-      timestamp: BigInt(event.block.timestamp),
-      blockNumber: BigInt(event.block.number),
-    };
-
-    context.PositionPnLSnapshot.set(pnlSnapshot);
-
-    const currentTraderPnl = traderPnlMap.get(position.trader_id) || BigInt(0);
-    traderPnlMap.set(position.trader_id, currentTraderPnl + pnl);
-  }
-
-  for (const [traderId, unrealizedPnl] of Array.from(traderPnlMap.entries())) {
-    const trader = await context.Trader.get(traderId);
-
-    if (trader) {
-      const totalPnl = trader.currentRealizedPnl + unrealizedPnl;
-
-      const updatedTrader: Trader = {
-        ...trader,
-        currentUnrealizedPnl: unrealizedPnl,
-        allTimePnl: totalPnl,
-      };
-
-      context.Trader.set(updatedTrader);
-
-      const traderSnapshot: TraderPnLSnapshot = {
-        id: `${traderId}_${event.block.timestamp}`,
-        trader_id: traderId,
-        totalPnl: totalPnl,
-        realizedPnl: trader.currentRealizedPnl,
-        unrealizedPnl: unrealizedPnl,
-        positionCount: trader.totalPositions,
-        timestamp: BigInt(event.block.timestamp),
-        blockNumber: BigInt(event.block.number),
-      };
-
-      context.TraderPnLSnapshot.set(traderSnapshot);
-    }
-  }
 }
 
 ProbabilityOracle.PriceUpdaterChanged.handler(async ({ event, context }) => {

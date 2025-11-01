@@ -66,18 +66,13 @@ LiquidationEngine.PositionLiquidated.handler(async ({ event, context }) => {
         trader.openPositions > BigInt(0)
           ? trader.openPositions - BigInt(1)
           : BigInt(0);
-      const newRealizedPnl =
-        trader.currentRealizedPnl + (position.pnl || position.currentPnl);
-      const newUnrealizedPnl =
-        trader.currentUnrealizedPnl - position.currentPnl;
+      const newRealizedPnl = trader.realizedPnl + (position.pnl || BigInt(0));
 
       const updatedTrader: Trader = {
         ...trader,
         openPositions: newOpenPositions,
         liquidatedPositions: trader.liquidatedPositions + BigInt(1),
-        currentRealizedPnl: newRealizedPnl,
-        currentUnrealizedPnl: newUnrealizedPnl,
-        allTimePnl: newRealizedPnl + newUnrealizedPnl,
+        realizedPnl: newRealizedPnl,
         lastTradedAt: BigInt(event.block.timestamp),
       };
       context.Trader.set(updatedTrader);

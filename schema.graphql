@@ -46,10 +46,8 @@ type Trader {
   liquidatedPositions: BigInt!
   totalVolume: BigInt!
 
-  # PnL tracking (real-time)
-  currentUnrealizedPnl: BigInt!
-  currentRealizedPnl: BigInt!
-  allTimePnl: BigInt!
+  # PnL tracking
+  realizedPnl: BigInt!
 
   firstTradedAt: BigInt!
   lastTradedAt: BigInt!
@@ -133,9 +131,6 @@ type Position {
   # Opening price (for PnL calculation)
   entryIndexPrice: BigInt!
 
-  # Real-time PnL (updated on every price change)
-  currentPnl: BigInt!
-  currentPnlPercentage: BigInt! # 18 decimals precision
   # Closing details (nullable until position is closed)
   pnl: BigInt
   closeTotalFee: BigInt

@@ -8,7 +8,7 @@ describe("Edge cases and defensive programming", () => {
   const positionKey =
     "0xabcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890";
   const marketId =
-    "0x1111111111111111111111111111111111111111111111111111111111111111";
+    "0x11a7b57e001bda319e451764e4feeb8705831bcb55eb9b4a4f9bf6a0b21179a3";
 
   describe("Collateral edge cases", () => {
     it("should handle funding payment exceeding collateral", async () => {

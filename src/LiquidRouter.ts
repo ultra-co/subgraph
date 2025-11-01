@@ -68,17 +68,13 @@ LiquidRouter.ExpiredPositionSettled.handler(async ({ event, context }) => {
         trader.openPositions > BigInt(0)
           ? trader.openPositions - BigInt(1)
           : BigInt(0);
-      const newRealizedPnl = trader.currentRealizedPnl + event.params.pnl;
-      const newUnrealizedPnl =
-        trader.currentUnrealizedPnl - position.currentPnl;
+      const newRealizedPnl = trader.realizedPnl + event.params.pnl;
 
       const updatedTrader: Trader = {
         ...trader,
         openPositions: newOpenPositions,
         closedPositions: trader.closedPositions + BigInt(1),
-        currentRealizedPnl: newRealizedPnl,
-        currentUnrealizedPnl: newUnrealizedPnl,
-        allTimePnl: newRealizedPnl + newUnrealizedPnl,
+        realizedPnl: newRealizedPnl,
         lastTradedAt: BigInt(event.block.timestamp),
       };
       context.Trader.set(updatedTrader);
@@ -335,15 +331,10 @@ LiquidRouter.PositionAutoClosedInsufficientFunding.handler(
           trader.openPositions > BigInt(0)
             ? trader.openPositions - BigInt(1)
             : BigInt(0);
-        const newUnrealizedPnl =
-          trader.currentUnrealizedPnl - position.currentPnl;
-
         const updatedTrader: Trader = {
           ...trader,
           openPositions: newOpenPositions,
           closedPositions: trader.closedPositions + BigInt(1),
-          currentUnrealizedPnl: newUnrealizedPnl,
-          allTimePnl: trader.currentRealizedPnl + newUnrealizedPnl,
           lastTradedAt: BigInt(event.block.timestamp),
         };
         context.Trader.set(updatedTrader);
@@ -395,17 +386,13 @@ LiquidRouter.PositionClosed.handler(async ({ event, context }) => {
         trader.openPositions > BigInt(0)
           ? trader.openPositions - BigInt(1)
           : BigInt(0);
-      const newRealizedPnl = trader.currentRealizedPnl + event.params.pnl;
-      const newUnrealizedPnl =
-        trader.currentUnrealizedPnl - position.currentPnl;
+      const newRealizedPnl = trader.realizedPnl + event.params.pnl;
 
       const updatedTrader: Trader = {
         ...trader,
         openPositions: newOpenPositions,
         closedPositions: trader.closedPositions + BigInt(1),
-        currentRealizedPnl: newRealizedPnl,
-        currentUnrealizedPnl: newUnrealizedPnl,
-        allTimePnl: newRealizedPnl + newUnrealizedPnl,
+        realizedPnl: newRealizedPnl,
         lastTradedAt: BigInt(event.block.timestamp),
       };
       context.Trader.set(updatedTrader);
@@ -444,9 +431,7 @@ LiquidRouter.PositionOpened.handler(async ({ event, context }) => {
       closedPositions: BigInt(0),
       liquidatedPositions: BigInt(0),
       totalVolume: BigInt(0),
-      currentUnrealizedPnl: BigInt(0),
-      currentRealizedPnl: BigInt(0),
-      allTimePnl: BigInt(0),
+      realizedPnl: BigInt(0),
       firstTradedAt: BigInt(event.block.timestamp),
       lastTradedAt: BigInt(event.block.timestamp),
     };
@@ -499,8 +484,6 @@ LiquidRouter.PositionOpened.handler(async ({ event, context }) => {
     openTransactionHash: event.transaction.hash,
 
     entryIndexPrice: entryIndexPrice,
-    currentPnl: BigInt(0),
-    currentPnlPercentage: BigInt(0),
 
     pnl: undefined,
     closeTotalFee: undefined,

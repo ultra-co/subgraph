@@ -14,7 +14,7 @@ describe("LiquidationEngine contract tests", () => {
   const positionKey =
     "0xabcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890";
   const marketId =
-    "0x1111111111111111111111111111111111111111111111111111111111111111";
+    "0x11a7b57e001bda319e451764e4feeb8705831bcb55eb9b4a4f9bf6a0b21179a3";
 
   describe("PositionLiquidated event", () => {
     it("should liquidate position and update trader stats", async () => {
