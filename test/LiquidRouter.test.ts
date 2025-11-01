@@ -21,7 +21,7 @@ describe("LiquidRouter contract tests", () => {
   const positionKey =
     "0xabcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890";
   const marketId =
-    "0x1111111111111111111111111111111111111111111111111111111111111111";
+    "0x11a7b57e001bda319e451764e4feeb8705831bcb55eb9b4a4f9bf6a0b21179a3";
 
   describe("PositionOpened event", () => {
     it("should create new trader on first position", async () => {
@@ -54,6 +54,7 @@ describe("LiquidRouter contract tests", () => {
       assert.strictEqual(actualTrader?.closedPositions, BigInt(0));
       assert.strictEqual(actualTrader?.liquidatedPositions, BigInt(0));
       assert.strictEqual(actualTrader?.totalVolume, BigInt(10000e6));
+      assert.strictEqual(actualTrader?.realizedPnl, BigInt(0));
     });
 
     it("should create position with correct leverage calculation", async () => {
@@ -86,6 +87,7 @@ describe("LiquidRouter contract tests", () => {
       assert.strictEqual(actualPosition?.isLong, true);
       assert.strictEqual(actualPosition?.closed, false);
       assert.strictEqual(actualPosition?.liquidated, false);
+      assert.strictEqual(actualPosition?.entryIndexPrice >= BigInt(0), true);
     });
 
     it("should handle zero collateral gracefully", async () => {
@@ -213,6 +215,7 @@ describe("LiquidRouter contract tests", () => {
 
       assert.strictEqual(actualTrader?.openPositions, BigInt(0));
       assert.strictEqual(actualTrader?.closedPositions, BigInt(1));
+      assert.strictEqual(actualTrader?.realizedPnl, BigInt(500e6));
     });
 
     it("should handle negative PnL correctly", async () => {

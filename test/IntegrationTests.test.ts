@@ -8,7 +8,7 @@ describe("Integration tests - Full position lifecycle", () => {
   const positionKey =
     "0xabcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890";
   const marketId =
-    "0x1111111111111111111111111111111111111111111111111111111111111111";
+    "0x11a7b57e001bda319e451764e4feeb8705831bcb55eb9b4a4f9bf6a0b21179a3";
 
   describe("Complete position lifecycle - Open to Close", () => {
     it("should handle full lifecycle with funding payments", async () => {

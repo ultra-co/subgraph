@@ -11,6 +11,9 @@ networks:
         events:
           - event: MarketSourceInitialized(bytes32 indexed marketId, string sourcePlatform, string sourceMarketId)
           - event: PriceUpdated(bytes32 indexed marketId, uint96 price, uint64 timestamp)
+            field_selection:
+              transaction_fields:
+                - hash
           - event: PriceUpdaterChanged(address indexed newUpdater)
           - event: TWAPPeriodUpdated(uint32 newPeriod)
       - name: LLPVault

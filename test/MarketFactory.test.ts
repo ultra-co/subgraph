@@ -72,6 +72,9 @@ describe("MarketFactory contract tests", () => {
         createdAt: BigInt(event.block.timestamp),
         blockNumber: BigInt(event.block.number),
         transactionHash: event.transaction.hash,
+        currentPrice: BigInt(0),
+        indexPrice: undefined,
+        lastPriceUpdate: BigInt(event.block.timestamp),
       };
 
       assert.deepEqual(actualMarket, expectedMarket);
