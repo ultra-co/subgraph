@@ -9,4 +9,6 @@ export const MARKET_QUESTIONS: Record<string, string> = {
     "Zootopia 2 to be the highest grossing movie in 2025?",
   "0x88d3a2a9b9583575e19155de4a2007718c303da3d68c515f96b49e038dee807c":
     "Wicked: For Good to have the highest opening weekend box office in 2025?",
+  "0x1b9e2df14806f2bbbe20aa3cc1677b68a3f97b7ecc12918713c288aa002e1eb7":
+    "Kansas City to win the Super Bowl?",
 };
