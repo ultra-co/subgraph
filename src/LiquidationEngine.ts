@@ -5,6 +5,7 @@ import {
   LiquidationEngine_PositionLiquidated,
   Position,
   Trader,
+  Market,
 } from "generated";
 
 LiquidationEngine.KeeperRewardsClaimed.handler(async ({ event, context }) => {
@@ -76,6 +77,16 @@ LiquidationEngine.PositionLiquidated.handler(async ({ event, context }) => {
         lastTradedAt: BigInt(event.block.timestamp),
       };
       context.Trader.set(updatedTrader);
+    }
+
+    // Update market volume (add position size for liquidated position)
+    const market = await context.Market.get(position.market_id);
+    if (market) {
+      const updatedMarket: Market = {
+        ...market,
+        volume: market.volume + position.size,
+      };
+      context.Market.set(updatedMarket);
     }
   }
 });
