@@ -79,6 +79,16 @@ LiquidRouter.ExpiredPositionSettled.handler(async ({ event, context }) => {
       };
       context.Trader.set(updatedTrader);
     }
+
+    // Update market volume (add position size for expired position)
+    const market = await context.Market.get(position.market_id);
+    if (market) {
+      const updatedMarket: Market = {
+        ...market,
+        volume: market.volume + position.size,
+      };
+      context.Market.set(updatedMarket);
+    }
   }
 });
 
@@ -196,6 +206,16 @@ LiquidRouter.MarginAdded.handler(async ({ event, context }) => {
       context.Trader.set(updatedTrader);
     }
 
+    // Update market volume (add additional collateral)
+    const market = await context.Market.get(position.market_id);
+    if (market) {
+      const updatedMarket: Market = {
+        ...market,
+        volume: market.volume + event.params.additionalCollateral,
+      };
+      context.Market.set(updatedMarket);
+    }
+
     const marginUpdate: MarginUpdate = {
       id: eventId,
       position_id: positionId,
@@ -248,6 +268,16 @@ LiquidRouter.MarginRemoved.handler(async ({ event, context }) => {
         lastTradedAt: BigInt(event.block.timestamp),
       };
       context.Trader.set(updatedTrader);
+    }
+
+    // Update market volume (add removed collateral to volume)
+    const market = await context.Market.get(position.market_id);
+    if (market) {
+      const updatedMarket: Market = {
+        ...market,
+        volume: market.volume + event.params.collateralRemoved,
+      };
+      context.Market.set(updatedMarket);
     }
 
     const marginUpdate: MarginUpdate = {
@@ -339,6 +369,16 @@ LiquidRouter.PositionAutoClosedInsufficientFunding.handler(
         };
         context.Trader.set(updatedTrader);
       }
+
+      // Update market volume (add position size for auto-closed position)
+      const market = await context.Market.get(position.market_id);
+      if (market) {
+        const updatedMarket: Market = {
+          ...market,
+          volume: market.volume + position.size,
+        };
+        context.Market.set(updatedMarket);
+      }
     }
   }
 );
@@ -396,6 +436,16 @@ LiquidRouter.PositionClosed.handler(async ({ event, context }) => {
         lastTradedAt: BigInt(event.block.timestamp),
       };
       context.Trader.set(updatedTrader);
+    }
+
+    // Update market volume (add position size for closed position)
+    const market = await context.Market.get(position.market_id);
+    if (market) {
+      const updatedMarket: Market = {
+        ...market,
+        volume: market.volume + position.size,
+      };
+      context.Market.set(updatedMarket);
     }
   }
 });
