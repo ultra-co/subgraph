@@ -41,7 +41,7 @@ LLPVault.Deposit.handler(async ({ event, context }) => {
 
   context.LLPVault_Deposit.set(eventEntity);
 
-  const vaultId = `${event.chainId}_vault`;
+  const vaultId = `${event.chainId}_${event.srcAddress.toLowerCase()}`;
   let vault = await context.Vault.get(vaultId);
 
   if (!vault) {
@@ -180,7 +180,7 @@ LLPVault.DepositsPaused.handler(async ({ event, context }) => {
 
   context.LLPVault_DepositsPaused.set(eventEntity);
 
-  const vaultId = `${event.chainId}_vault`;
+  const vaultId = `${event.chainId}_${event.srcAddress.toLowerCase()}`;
   const vault = await context.Vault.get(vaultId);
 
   if (vault) {
@@ -203,7 +203,7 @@ LLPVault.FeeUpdated.handler(async ({ event, context }) => {
 
   context.LLPVault_FeeUpdated.set(eventEntity);
 
-  const vaultId = `${event.chainId}_vault`;
+  const vaultId = `${event.chainId}_${event.srcAddress.toLowerCase()}`;
   const vault = await context.Vault.get(vaultId);
 
   if (vault) {
@@ -234,7 +234,7 @@ LLPVault.FundingPaymentRecorded.handler(async ({ event, context }) => {
 
   context.LLPVault_FundingPaymentRecorded.set(eventEntity);
 
-  const vaultId = `${event.chainId}_vault`;
+  const vaultId = `${event.chainId}_${event.srcAddress.toLowerCase()}`;
   const vault = await context.Vault.get(vaultId);
 
   if (vault) {
@@ -309,7 +309,7 @@ LLPVault.LiquidationFeePaid.handler(async ({ event, context }) => {
 
   context.LLPVault_LiquidationFeePaid.set(eventEntity);
 
-  const vaultId = `${event.chainId}_vault`;
+  const vaultId = `${event.chainId}_${event.srcAddress.toLowerCase()}`;
   const vault = await context.Vault.get(vaultId);
 
   if (vault) {
@@ -364,7 +364,7 @@ LLPVault.TraderPnLSettled.handler(async ({ event, context }) => {
 
   context.LLPVault_TraderPnLSettled.set(eventEntity);
 
-  const vaultId = `${event.chainId}_vault`;
+  const vaultId = `${event.chainId}_${event.srcAddress.toLowerCase()}`;
   const vault = await context.Vault.get(vaultId);
 
   if (vault) {
@@ -433,7 +433,7 @@ LLPVault.TradingFeePaid.handler(async ({ event, context }) => {
 
   context.LLPVault_TradingFeePaid.set(eventEntity);
 
-  const vaultId = `${event.chainId}_vault`;
+  const vaultId = `${event.chainId}_${event.srcAddress.toLowerCase()}`;
   const vault = await context.Vault.get(vaultId);
 
   if (vault) {
@@ -501,7 +501,7 @@ LLPVault.Withdraw.handler(async ({ event, context }) => {
 
   context.LLPVault_Withdraw.set(eventEntity);
 
-  const vaultId = `${event.chainId}_vault`;
+  const vaultId = `${event.chainId}_${event.srcAddress.toLowerCase()}`;
   const vault = await context.Vault.get(vaultId);
 
   if (vault) {
@@ -587,7 +587,7 @@ LLPVault.WithdrawalsPaused.handler(async ({ event, context }) => {
 
   context.LLPVault_WithdrawalsPaused.set(eventEntity);
 
-  const vaultId = `${event.chainId}_vault`;
+  const vaultId = `${event.chainId}_${event.srcAddress.toLowerCase()}`;
   const vault = await context.Vault.get(vaultId);
 
   if (vault) {

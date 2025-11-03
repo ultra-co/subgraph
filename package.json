@@ -10,7 +10,8 @@
     "dev": "envio dev",
     "start": "envio start",
     "test": "SKIP_RPC_IN_TESTS=true pnpm mocha",
-    "test:rpc": "npx ts-node scripts/testGetPrice.ts"
+    "test:rpc": "npx ts-node scripts/testGetPrice.ts",
+    "rescript": "cd generated && npx rescript"
   },
   "devDependencies": {
     "@types/chai": "^4.3.11",
