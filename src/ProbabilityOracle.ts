@@ -13,6 +13,8 @@ import {
   TraderPnLSnapshot,
 } from "generated";
 import { getIndexPrice } from "./effects/getPrice";
+import { getMarketMetadata } from "./effects/getMarketMetadata";
+import { MARKET_QUESTIONS } from "./constants/marketQuestions";
 import {
   getPeriodStart,
   getPeriodDuration,
@@ -70,8 +72,35 @@ ProbabilityOracle.PriceUpdated.handler(async ({ event, context }) => {
     ? BigInt(indexPriceResult)
     : market.indexPrice || BigInt(0);
 
+  // Check and update question if missing
+  let question = market.question;
+  if (!question || question.trim() === "") {
+    const questionForMarket = MARKET_QUESTIONS[event.params.marketId];
+    if (questionForMarket) {
+      question = questionForMarket;
+    }
+  }
+
+  // Check and update image if missing
+  let image = market.image;
+  if (
+    (!image || image.trim() === "") &&
+    market.sourcePlatform?.toLowerCase() === "polymarket" &&
+    market.sourceMarketId
+  ) {
+    const imageUrl = await context.effect(getMarketMetadata, {
+      sourceMarketId: market.sourceMarketId,
+      sourcePlatform: market.sourcePlatform,
+    });
+    if (imageUrl) {
+      image = imageUrl;
+    }
+  }
+
   const updatedMarket: Market = {
     ...market,
+    question,
+    image,
     currentPrice: event.params.price,
     indexPrice,
     lastPriceUpdate: event.params.timestamp,
