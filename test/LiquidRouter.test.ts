@@ -12,8 +12,9 @@ import {
   Trader,
   Funding,
   MarginUpdate,
+  Market,
 } from "../generated";
-const { MockDb, LiquidRouter } = TestHelpers;
+const { MockDb, LiquidRouter, MarketFactory } = TestHelpers;
 
 describe("LiquidRouter contract tests", () => {
   const chainId = 84532;
@@ -23,9 +24,28 @@ describe("LiquidRouter contract tests", () => {
   const marketId =
     "0x11a7b57e001bda319e451764e4feeb8705831bcb55eb9b4a4f9bf6a0b21179a3";
 
+  // Helper function to create a market for tests
+  async function createMarket(mockDb: any) {
+    const marketEvent = MarketFactory.MarketCreated.createMockEvent({
+      marketId,
+      name: "Test Market",
+      sourcePlatform: "Polymarket",
+      sourceMarketId: "test-123",
+      expiryTimestamp: BigInt(1735689600),
+      creator: "0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb",
+    });
+
+    return await MarketFactory.MarketCreated.processEvent({
+      event: marketEvent,
+      mockDb,
+    });
+  }
+
   describe("PositionOpened event", () => {
     it("should create new trader on first position", async () => {
-      const mockDb = MockDb.createMockDb();
+      let mockDb = MockDb.createMockDb();
+      mockDb = await createMarket(mockDb);
+
       const event = LiquidRouter.PositionOpened.createMockEvent({
         user: trader,
         positionKey,
@@ -55,10 +75,23 @@ describe("LiquidRouter contract tests", () => {
       assert.strictEqual(actualTrader?.liquidatedPositions, BigInt(0));
       assert.strictEqual(actualTrader?.totalVolume, BigInt(10000e6));
       assert.strictEqual(actualTrader?.realizedPnl, BigInt(0));
+
+      // Check market volume was updated
+      const market = mockDbUpdated.entities.Market.get(
+        `${chainId}_${marketId}`
+      );
+      assert.ok(market, "Market should exist");
+      assert.strictEqual(
+        market?.volume,
+        BigInt(10000e6),
+        "Market volume should be updated"
+      );
     });
 
     it("should create position with correct leverage calculation", async () => {
-      const mockDb = MockDb.createMockDb();
+      let mockDb = MockDb.createMockDb();
+      mockDb = await createMarket(mockDb);
+
       const event = LiquidRouter.PositionOpened.createMockEvent({
         user: trader,
         positionKey,
@@ -91,7 +124,9 @@ describe("LiquidRouter contract tests", () => {
     });
 
     it("should handle zero collateral gracefully", async () => {
-      const mockDb = MockDb.createMockDb();
+      let mockDb = MockDb.createMockDb();
+      mockDb = await createMarket(mockDb);
+
       const event = LiquidRouter.PositionOpened.createMockEvent({
         user: trader,
         positionKey,
@@ -109,6 +144,17 @@ describe("LiquidRouter contract tests", () => {
         mockDb,
       });
 
+      // Check market volume was updated even with zero collateral
+      const market = mockDbUpdated.entities.Market.get(
+        `${chainId}_${marketId}`
+      );
+      assert.ok(market, "Market should exist");
+      assert.strictEqual(
+        market?.volume,
+        BigInt(10000e6),
+        "Market volume should be updated"
+      );
+
       const actualPosition = mockDbUpdated.entities.Position.get(
         `${chainId}_${positionKey}`
       );
@@ -117,7 +163,9 @@ describe("LiquidRouter contract tests", () => {
     });
 
     it("should update existing trader stats", async () => {
-      const mockDb = MockDb.createMockDb();
+      let mockDb = MockDb.createMockDb();
+      mockDb = await createMarket(mockDb);
+
       const positionKey1 =
         "0xaaaa000000000000000000000000000000000000000000000000000000000001";
       const positionKey2 =
@@ -164,12 +212,24 @@ describe("LiquidRouter contract tests", () => {
       assert.strictEqual(actualTrader?.totalPositions, BigInt(2));
       assert.strictEqual(actualTrader?.openPositions, BigInt(2));
       assert.strictEqual(actualTrader?.totalVolume, BigInt(25000e6));
+
+      // Check market volume accumulates from both positions
+      const market = mockDbUpdated.entities.Market.get(
+        `${chainId}_${marketId}`
+      );
+      assert.ok(market, "Market should exist");
+      assert.strictEqual(
+        market?.volume,
+        BigInt(25000e6),
+        "Market volume should accumulate"
+      );
     });
   });
 
   describe("PositionClosed event", () => {
     it("should close position and update trader stats", async () => {
       let mockDb = MockDb.createMockDb();
+      mockDb = await createMarket(mockDb);
 
       const openEvent = LiquidRouter.PositionOpened.createMockEvent({
         user: trader,
@@ -220,6 +280,7 @@ describe("LiquidRouter contract tests", () => {
 
     it("should handle negative PnL correctly", async () => {
       let mockDb = MockDb.createMockDb();
+      mockDb = await createMarket(mockDb);
 
       const openEvent = LiquidRouter.PositionOpened.createMockEvent({
         user: trader,
@@ -265,6 +326,7 @@ describe("LiquidRouter contract tests", () => {
   describe("FundingPaid event", () => {
     it("should decrease position collateral when funding is paid", async () => {
       let mockDb = MockDb.createMockDb();
+      mockDb = await createMarket(mockDb);
 
       const openEvent = LiquidRouter.PositionOpened.createMockEvent({
         user: trader,
@@ -310,6 +372,7 @@ describe("LiquidRouter contract tests", () => {
 
     it("should handle multiple funding payments", async () => {
       let mockDb = MockDb.createMockDb();
+      mockDb = await createMarket(mockDb);
 
       const openEvent = LiquidRouter.PositionOpened.createMockEvent({
         user: trader,
@@ -363,6 +426,7 @@ describe("LiquidRouter contract tests", () => {
   describe("FundingReceived event", () => {
     it("should increase position collateral when funding is received", async () => {
       let mockDb = MockDb.createMockDb();
+      mockDb = await createMarket(mockDb);
 
       const openEvent = LiquidRouter.PositionOpened.createMockEvent({
         user: trader,
@@ -408,6 +472,7 @@ describe("LiquidRouter contract tests", () => {
 
     it("should handle combined funding paid and received", async () => {
       let mockDb = MockDb.createMockDb();
+      mockDb = await createMarket(mockDb);
 
       const openEvent = LiquidRouter.PositionOpened.createMockEvent({
         user: trader,
@@ -461,6 +526,7 @@ describe("LiquidRouter contract tests", () => {
   describe("ExpiredPositionSettled event", () => {
     it("should mark position as expired and update trader stats", async () => {
       let mockDb = MockDb.createMockDb();
+      mockDb = await createMarket(mockDb);
 
       const openEvent = LiquidRouter.PositionOpened.createMockEvent({
         user: trader,
@@ -509,6 +575,7 @@ describe("LiquidRouter contract tests", () => {
   describe("MarginAdded event", () => {
     it("should add margin to existing position", async () => {
       let mockDb = MockDb.createMockDb();
+      mockDb = await createMarket(mockDb);
 
       const openEvent = LiquidRouter.PositionOpened.createMockEvent({
         user: trader,
@@ -559,6 +626,7 @@ describe("LiquidRouter contract tests", () => {
 
     it("should handle multiple margin additions", async () => {
       let mockDb = MockDb.createMockDb();
+      mockDb = await createMarket(mockDb);
 
       mockDb = await LiquidRouter.PositionOpened.processEvent({
         event: LiquidRouter.PositionOpened.createMockEvent({
@@ -609,6 +677,7 @@ describe("LiquidRouter contract tests", () => {
 
     it("should not add margin to closed position", async () => {
       let mockDb = MockDb.createMockDb();
+      mockDb = await createMarket(mockDb);
 
       mockDb = await LiquidRouter.PositionOpened.processEvent({
         event: LiquidRouter.PositionOpened.createMockEvent({
@@ -659,7 +728,8 @@ describe("LiquidRouter contract tests", () => {
     });
 
     it("should not add margin to non-existent position", async () => {
-      const mockDb = MockDb.createMockDb();
+      let mockDb = MockDb.createMockDb();
+      mockDb = await createMarket(mockDb);
       const nonExistentKey =
         "0xbbbb000000000000000000000000000000000000000000000000000000000000";
 
@@ -686,6 +756,7 @@ describe("LiquidRouter contract tests", () => {
   describe("MarginRemoved event", () => {
     it("should remove margin from existing position", async () => {
       let mockDb = MockDb.createMockDb();
+      mockDb = await createMarket(mockDb);
 
       mockDb = await LiquidRouter.PositionOpened.processEvent({
         event: LiquidRouter.PositionOpened.createMockEvent({
@@ -733,6 +804,7 @@ describe("LiquidRouter contract tests", () => {
 
     it("should prevent negative totalVolume on margin removal", async () => {
       let mockDb = MockDb.createMockDb();
+      mockDb = await createMarket(mockDb);
 
       mockDb = await LiquidRouter.PositionOpened.processEvent({
         event: LiquidRouter.PositionOpened.createMockEvent({
@@ -769,6 +841,7 @@ describe("LiquidRouter contract tests", () => {
 
     it("should handle margin add then remove sequence", async () => {
       let mockDb = MockDb.createMockDb();
+      mockDb = await createMarket(mockDb);
 
       mockDb = await LiquidRouter.PositionOpened.processEvent({
         event: LiquidRouter.PositionOpened.createMockEvent({
@@ -819,6 +892,7 @@ describe("LiquidRouter contract tests", () => {
 
     it("should not remove margin from closed position", async () => {
       let mockDb = MockDb.createMockDb();
+      mockDb = await createMarket(mockDb);
 
       mockDb = await LiquidRouter.PositionOpened.processEvent({
         event: LiquidRouter.PositionOpened.createMockEvent({
@@ -870,6 +944,7 @@ describe("LiquidRouter contract tests", () => {
 
     it("should update lastTradedAt on margin changes", async () => {
       let mockDb = MockDb.createMockDb();
+      mockDb = await createMarket(mockDb);
 
       mockDb = await LiquidRouter.PositionOpened.processEvent({
         event: LiquidRouter.PositionOpened.createMockEvent({
@@ -905,6 +980,7 @@ describe("LiquidRouter contract tests", () => {
 
     it("should create MarginUpdate with correct position and trader links", async () => {
       let mockDb = MockDb.createMockDb();
+      mockDb = await createMarket(mockDb);
 
       mockDb = await LiquidRouter.PositionOpened.processEvent({
         event: LiquidRouter.PositionOpened.createMockEvent({

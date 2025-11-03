@@ -1,6 +1,6 @@
 import assert from "assert";
 import { TestHelpers, Position, Trader } from "../generated";
-const { MockDb, LiquidRouter, LiquidationEngine } = TestHelpers;
+const { MockDb, LiquidRouter, LiquidationEngine, MarketFactory } = TestHelpers;
 
 describe("Edge cases and defensive programming", () => {
   const chainId = 84532;
@@ -10,9 +10,27 @@ describe("Edge cases and defensive programming", () => {
   const marketId =
     "0x11a7b57e001bda319e451764e4feeb8705831bcb55eb9b4a4f9bf6a0b21179a3";
 
+  // Helper function to create a market for tests
+  async function createMarket(mockDb: any) {
+    const marketEvent = MarketFactory.MarketCreated.createMockEvent({
+      marketId,
+      name: "Test Market",
+      sourcePlatform: "Polymarket",
+      sourceMarketId: "test-123",
+      expiryTimestamp: BigInt(1735689600),
+      creator: "0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb",
+    });
+
+    return await MarketFactory.MarketCreated.processEvent({
+      event: marketEvent,
+      mockDb,
+    });
+  }
+
   describe("Collateral edge cases", () => {
     it("should handle funding payment exceeding collateral", async () => {
       let mockDb = MockDb.createMockDb();
+      mockDb = await createMarket(mockDb);
 
       const openEvent = LiquidRouter.PositionOpened.createMockEvent({
         user: trader,
@@ -53,6 +71,7 @@ describe("Edge cases and defensive programming", () => {
 
     it("should handle multiple large funding payments", async () => {
       let mockDb = MockDb.createMockDb();
+      mockDb = await createMarket(mockDb);
 
       const openEvent = LiquidRouter.PositionOpened.createMockEvent({
         user: trader,
@@ -100,6 +119,7 @@ describe("Edge cases and defensive programming", () => {
   describe("Double closing scenarios", () => {
     it("should handle closing already closed position", async () => {
       let mockDb = MockDb.createMockDb();
+      mockDb = await createMarket(mockDb);
 
       const openEvent = LiquidRouter.PositionOpened.createMockEvent({
         user: trader,
@@ -168,6 +188,7 @@ describe("Edge cases and defensive programming", () => {
 
     it("should handle liquidation after manual close", async () => {
       let mockDb = MockDb.createMockDb();
+      mockDb = await createMarket(mockDb);
 
       const openEvent = LiquidRouter.PositionOpened.createMockEvent({
         user: trader,
@@ -237,6 +258,8 @@ describe("Edge cases and defensive programming", () => {
   describe("Trader statistics accuracy", () => {
     it("should maintain accurate stats with concurrent operations", async () => {
       let mockDb = MockDb.createMockDb();
+      mockDb = await createMarket(mockDb);
+
       const positions = [];
 
       for (let i = 0; i < 10; i++) {
@@ -324,6 +347,7 @@ describe("Edge cases and defensive programming", () => {
 
     it("should handle funding payments that exceed collateral completely", async () => {
       let mockDb = MockDb.createMockDb();
+      mockDb = await createMarket(mockDb);
 
       const openEvent = LiquidRouter.PositionOpened.createMockEvent({
         user: trader,
@@ -445,6 +469,8 @@ describe("Edge cases and defensive programming", () => {
   describe("Extreme value scenarios", () => {
     it("should handle very large position size", async () => {
       let mockDb = MockDb.createMockDb();
+      mockDb = await createMarket(mockDb);
+
       const largeSize = BigInt("1000000000000000000");
 
       const openEvent = LiquidRouter.PositionOpened.createMockEvent({
@@ -476,6 +502,7 @@ describe("Edge cases and defensive programming", () => {
 
     it("should handle maximum leverage positions", async () => {
       let mockDb = MockDb.createMockDb();
+      mockDb = await createMarket(mockDb);
 
       const openEvent = LiquidRouter.PositionOpened.createMockEvent({
         user: trader,
@@ -503,6 +530,7 @@ describe("Edge cases and defensive programming", () => {
 
     it("should handle zero size position", async () => {
       let mockDb = MockDb.createMockDb();
+      mockDb = await createMarket(mockDb);
 
       const openEvent = LiquidRouter.PositionOpened.createMockEvent({
         user: trader,
@@ -535,6 +563,7 @@ describe("Edge cases and defensive programming", () => {
   describe("Stats consistency verification", () => {
     it("should never have negative open positions", async () => {
       let mockDb = MockDb.createMockDb();
+      mockDb = await createMarket(mockDb);
 
       const openEvent = LiquidRouter.PositionOpened.createMockEvent({
         user: trader,
@@ -585,6 +614,8 @@ describe("Edge cases and defensive programming", () => {
 
     it("should maintain totalPositions = openPositions + closedPositions + liquidatedPositions", async () => {
       let mockDb = MockDb.createMockDb();
+      mockDb = await createMarket(mockDb);
+
       const positionKeys = [
         "0xaaaa000000000000000000000000000000000000000000000000000000000001",
         "0xaaaa000000000000000000000000000000000000000000000000000000000002",
@@ -684,6 +715,7 @@ describe("Edge cases and defensive programming", () => {
   describe("Timestamp tracking accuracy", () => {
     it("should update lastTradedAt on all position events", async () => {
       let mockDb = MockDb.createMockDb();
+      mockDb = await createMarket(mockDb);
 
       const openEvent = LiquidRouter.PositionOpened.createMockEvent({
         user: trader,

@@ -76,6 +76,9 @@ type Market {
   indexPrice: BigInt
   lastPriceUpdate: BigInt!
 
+  # Trading volume (cumulative from all positions)
+  volume: BigInt!
+
   # Price history
   priceObservations: [PriceObservation!]! @derivedFrom(field: "market_id")
   priceCandles: [PriceCandle!]! @derivedFrom(field: "market_id")

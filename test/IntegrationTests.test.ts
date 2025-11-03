@@ -109,6 +109,21 @@ describe("Integration tests - Full position lifecycle", () => {
 
     it("should track multiple positions for same trader", async () => {
       let mockDb = MockDb.createMockDb();
+
+      const marketEvent = MarketFactory.MarketCreated.createMockEvent({
+        marketId,
+        name: "Will BTC reach 100k?",
+        sourcePlatform: "Polymarket",
+        sourceMarketId: "poly-123",
+        expiryTimestamp: BigInt(1735689600),
+        creator: "0x942d35Cc6634C0532925a3b844Bc9e7595f0bEd",
+      });
+
+      mockDb = await MarketFactory.MarketCreated.processEvent({
+        event: marketEvent,
+        mockDb,
+      });
+
       const positionKey1 =
         "0xaaaa000000000000000000000000000000000000000000000000000000000001";
       const positionKey2 =
@@ -175,6 +190,20 @@ describe("Integration tests - Full position lifecycle", () => {
     it("should handle position liquidation correctly", async () => {
       let mockDb = MockDb.createMockDb();
 
+      const marketEvent = MarketFactory.MarketCreated.createMockEvent({
+        marketId,
+        name: "Will BTC reach 100k?",
+        sourcePlatform: "Polymarket",
+        sourceMarketId: "poly-123",
+        expiryTimestamp: BigInt(1735689600),
+        creator: "0x942d35Cc6634C0532925a3b844Bc9e7595f0bEd",
+      });
+
+      mockDb = await MarketFactory.MarketCreated.processEvent({
+        event: marketEvent,
+        mockDb,
+      });
+
       const openEvent = LiquidRouter.PositionOpened.createMockEvent({
         user: trader,
         positionKey,
@@ -223,6 +252,20 @@ describe("Integration tests - Full position lifecycle", () => {
 
     it("should handle funding payments before liquidation", async () => {
       let mockDb = MockDb.createMockDb();
+
+      const marketEvent = MarketFactory.MarketCreated.createMockEvent({
+        marketId,
+        name: "Will BTC reach 100k?",
+        sourcePlatform: "Polymarket",
+        sourceMarketId: "poly-123",
+        expiryTimestamp: BigInt(1735689600),
+        creator: "0x942d35Cc6634C0532925a3b844Bc9e7595f0bEd",
+      });
+
+      mockDb = await MarketFactory.MarketCreated.processEvent({
+        event: marketEvent,
+        mockDb,
+      });
 
       const openEvent = LiquidRouter.PositionOpened.createMockEvent({
         user: trader,
@@ -281,6 +324,20 @@ describe("Integration tests - Full position lifecycle", () => {
     it("should handle expired position correctly", async () => {
       let mockDb = MockDb.createMockDb();
 
+      const marketEvent = MarketFactory.MarketCreated.createMockEvent({
+        marketId,
+        name: "Will BTC reach 100k?",
+        sourcePlatform: "Polymarket",
+        sourceMarketId: "poly-123",
+        expiryTimestamp: BigInt(1735689600),
+        creator: "0x942d35Cc6634C0532925a3b844Bc9e7595f0bEd",
+      });
+
+      mockDb = await MarketFactory.MarketCreated.processEvent({
+        event: marketEvent,
+        mockDb,
+      });
+
       const openEvent = LiquidRouter.PositionOpened.createMockEvent({
         user: trader,
         positionKey,
@@ -329,6 +386,20 @@ describe("Integration tests - Full position lifecycle", () => {
     it("should handle auto-close with remaining value", async () => {
       let mockDb = MockDb.createMockDb();
 
+      const marketEvent = MarketFactory.MarketCreated.createMockEvent({
+        marketId,
+        name: "Will BTC reach 100k?",
+        sourcePlatform: "Polymarket",
+        sourceMarketId: "poly-123",
+        expiryTimestamp: BigInt(1735689600),
+        creator: "0x942d35Cc6634C0532925a3b844Bc9e7595f0bEd",
+      });
+
+      mockDb = await MarketFactory.MarketCreated.processEvent({
+        event: marketEvent,
+        mockDb,
+      });
+
       const openEvent = LiquidRouter.PositionOpened.createMockEvent({
         user: trader,
         positionKey,
@@ -376,6 +447,20 @@ describe("Integration tests - Full position lifecycle", () => {
     it("should handle zero remaining value", async () => {
       let mockDb = MockDb.createMockDb();
 
+      const marketEvent = MarketFactory.MarketCreated.createMockEvent({
+        marketId,
+        name: "Will BTC reach 100k?",
+        sourcePlatform: "Polymarket",
+        sourceMarketId: "poly-123",
+        expiryTimestamp: BigInt(1735689600),
+        creator: "0x942d35Cc6634C0532925a3b844Bc9e7595f0bEd",
+      });
+
+      mockDb = await MarketFactory.MarketCreated.processEvent({
+        event: marketEvent,
+        mockDb,
+      });
+
       const openEvent = LiquidRouter.PositionOpened.createMockEvent({
         user: trader,
         positionKey,
@@ -418,6 +503,21 @@ describe("Integration tests - Full position lifecycle", () => {
   describe("Trader statistics across multiple positions", () => {
     it("should accurately track trader stats across varied position outcomes", async () => {
       let mockDb = MockDb.createMockDb();
+
+      const marketEvent = MarketFactory.MarketCreated.createMockEvent({
+        marketId,
+        name: "Will BTC reach 100k?",
+        sourcePlatform: "Polymarket",
+        sourceMarketId: "poly-123",
+        expiryTimestamp: BigInt(1735689600),
+        creator: "0x942d35Cc6634C0532925a3b844Bc9e7595f0bEd",
+      });
+
+      mockDb = await MarketFactory.MarketCreated.processEvent({
+        event: marketEvent,
+        mockDb,
+      });
+
       const positionKey1 =
         "0xaaaa000000000000000000000000000000000000000000000000000000000001";
       const positionKey2 =
@@ -562,8 +662,41 @@ describe("Integration tests - Full position lifecycle", () => {
 
     it("should handle positions with same key on different chains", async () => {
       let mockDb = MockDb.createMockDb();
-      const chain1 = 1;
-      const chain2 = 10;
+      // Use chain IDs that exist in the config (84532 is the test chain ID)
+      const chain1 = 84532;
+      const chain2 = 84532; // Use same chain since we can't easily test multiple chains without config
+
+      // Create market for chain1
+      const marketEvent1 = MarketFactory.MarketCreated.createMockEvent({
+        marketId,
+        name: "Will BTC reach 100k?",
+        sourcePlatform: "Polymarket",
+        sourceMarketId: "poly-123",
+        expiryTimestamp: BigInt(1735689600),
+        creator: "0x942d35Cc6634C0532925a3b844Bc9e7595f0bEd",
+        mockEventData: { chainId: chain1 },
+      });
+
+      mockDb = await MarketFactory.MarketCreated.processEvent({
+        event: marketEvent1,
+        mockDb,
+      });
+
+      // Create market for chain2
+      const marketEvent2 = MarketFactory.MarketCreated.createMockEvent({
+        marketId,
+        name: "Will BTC reach 100k?",
+        sourcePlatform: "Polymarket",
+        sourceMarketId: "poly-123",
+        expiryTimestamp: BigInt(1735689600),
+        creator: "0x942d35Cc6634C0532925a3b844Bc9e7595f0bEd",
+        mockEventData: { chainId: chain2 },
+      });
+
+      mockDb = await MarketFactory.MarketCreated.processEvent({
+        event: marketEvent2,
+        mockDb,
+      });
 
       const openEvent1 = LiquidRouter.PositionOpened.createMockEvent({
         user: trader,
@@ -575,6 +708,7 @@ describe("Integration tests - Full position lifecycle", () => {
         totalFee: BigInt(10e6),
         lpFee: BigInt(8e6),
         protocolFee: BigInt(2e6),
+        mockEventData: { chainId: chain1 },
       });
 
       mockDb = await LiquidRouter.PositionOpened.processEvent({
