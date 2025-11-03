@@ -67,6 +67,10 @@ type Market {
   blockNumber: BigInt!
   transactionHash: String!
 
+  # Metadata
+  question: String
+  image: String
+
   # Current prices (real-time)
   currentPrice: BigInt!
   indexPrice: BigInt

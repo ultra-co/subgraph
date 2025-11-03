@@ -18,7 +18,8 @@ const { MockDb, LLPVault } = TestHelpers;
 
 describe("LLPVault contract tests", () => {
   const chainId = 84532;
-  const vaultId = `${chainId}_vault`;
+  const vaultAddress = "0xBCF9CEAA41165AfCD485C9dA224a9b99BA9a183b";
+  const vaultId = `${chainId}_${vaultAddress.toLowerCase()}`;
   const alice = "0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb";
   const bob = "0x842d35Cc6634C0532925a3b844Bc9e7595f0bEc";
 
@@ -31,6 +32,9 @@ describe("LLPVault contract tests", () => {
         owner: alice,
         assets: BigInt(10000e6),
         shares: BigInt(10000e6),
+        mockEventData: {
+          srcAddress: vaultAddress,
+        },
       });
 
       const mockDbUpdated = await LLPVault.Deposit.processEvent({
@@ -56,6 +60,9 @@ describe("LLPVault contract tests", () => {
         owner: alice,
         assets: BigInt(10000e6),
         shares: BigInt(10000e6),
+        mockEventData: {
+          srcAddress: vaultAddress,
+        },
       });
 
       const mockDbUpdated = await LLPVault.Deposit.processEvent({
@@ -82,6 +89,9 @@ describe("LLPVault contract tests", () => {
         owner: alice,
         assets: BigInt(10000e6),
         shares: BigInt(10000e6),
+        mockEventData: {
+          srcAddress: vaultAddress,
+        },
       });
 
       const mockDbUpdated = await LLPVault.Deposit.processEvent({
@@ -110,6 +120,7 @@ describe("LLPVault contract tests", () => {
         shares: BigInt(10000e6),
         mockEventData: {
           block: { number: 1000 },
+          srcAddress: vaultAddress,
         },
       });
 
@@ -122,6 +133,7 @@ describe("LLPVault contract tests", () => {
         amount: BigInt(1000e6),
         mockEventData: {
           block: { number: 1001 },
+          srcAddress: vaultAddress,
         },
       });
 
@@ -137,6 +149,7 @@ describe("LLPVault contract tests", () => {
         shares: BigInt(10000e6),
         mockEventData: {
           block: { number: 1002 },
+          srcAddress: vaultAddress,
         },
       });
 
@@ -164,6 +177,9 @@ describe("LLPVault contract tests", () => {
         owner: bob,
         assets: BigInt(10000e6),
         shares: BigInt(10000e6),
+        mockEventData: {
+          srcAddress: vaultAddress,
+        },
       });
 
       const mockDbUpdated = await LLPVault.Deposit.processEvent({
@@ -194,6 +210,9 @@ describe("LLPVault contract tests", () => {
           owner: alice,
           assets: BigInt(10000e6),
           shares: BigInt(10000e6),
+          mockEventData: {
+            srcAddress: vaultAddress,
+          },
         }),
         mockDb,
       });
@@ -204,6 +223,9 @@ describe("LLPVault contract tests", () => {
         owner: alice,
         assets: BigInt(5000e6),
         shares: BigInt(5000e6),
+        mockEventData: {
+          srcAddress: vaultAddress,
+        },
       });
 
       mockDb = await LLPVault.Withdraw.processEvent({
@@ -228,6 +250,9 @@ describe("LLPVault contract tests", () => {
           owner: alice,
           assets: BigInt(10000e6),
           shares: BigInt(10000e6),
+          mockEventData: {
+            srcAddress: vaultAddress,
+          },
         }),
         mockDb,
       });
@@ -239,6 +264,9 @@ describe("LLPVault contract tests", () => {
           owner: alice,
           assets: BigInt(5000e6),
           shares: BigInt(5000e6),
+          mockEventData: {
+            srcAddress: vaultAddress,
+          },
         }),
         mockDb,
       });
@@ -262,7 +290,7 @@ describe("LLPVault contract tests", () => {
           owner: alice,
           assets: BigInt(10000e6),
           shares: BigInt(10000e6),
-          mockEventData: { block: { number: 1000 } },
+          mockEventData: { block: { number: 1000 }, srcAddress: vaultAddress },
         }),
         mockDb,
       });
@@ -273,7 +301,7 @@ describe("LLPVault contract tests", () => {
         owner: alice,
         assets: BigInt(5000e6),
         shares: BigInt(5000e6),
-        mockEventData: { block: { number: 1001 } },
+        mockEventData: { block: { number: 1001 }, srcAddress: vaultAddress },
       });
 
       mockDb = await LLPVault.Withdraw.processEvent({
@@ -300,7 +328,7 @@ describe("LLPVault contract tests", () => {
           owner: alice,
           assets: BigInt(10000e6),
           shares: BigInt(10000e6),
-          mockEventData: { block: { number: 1000 } },
+          mockEventData: { block: { number: 1000 }, srcAddress: vaultAddress },
         }),
         mockDb,
       });
@@ -308,7 +336,7 @@ describe("LLPVault contract tests", () => {
       mockDb = await LLPVault.TradingFeePaid.processEvent({
         event: LLPVault.TradingFeePaid.createMockEvent({
           amount: BigInt(1000e6),
-          mockEventData: { block: { number: 1001 } },
+          mockEventData: { block: { number: 1001 }, srcAddress: vaultAddress },
         }),
         mockDb,
       });
@@ -320,7 +348,7 @@ describe("LLPVault contract tests", () => {
           owner: alice,
           assets: BigInt(5500e6),
           shares: BigInt(5000e6),
-          mockEventData: { block: { number: 1002 } },
+          mockEventData: { block: { number: 1002 }, srcAddress: vaultAddress },
         }),
         mockDb,
       });
@@ -349,14 +377,14 @@ describe("LLPVault contract tests", () => {
           owner: alice,
           assets: BigInt(10000e6),
           shares: BigInt(10000e6),
-          mockEventData: { block: { number: 1000 } },
+          mockEventData: { block: { number: 1000 }, srcAddress: vaultAddress },
         }),
         mockDb,
       });
 
       const feeEvent = LLPVault.TradingFeePaid.createMockEvent({
         amount: BigInt(100e6),
-        mockEventData: { block: { number: 1001 } },
+        mockEventData: { block: { number: 1001 }, srcAddress: vaultAddress },
       });
 
       mockDb = await LLPVault.TradingFeePaid.processEvent({
@@ -389,6 +417,9 @@ describe("LLPVault contract tests", () => {
           owner: alice,
           assets: BigInt(10000e6),
           shares: BigInt(10000e6),
+          mockEventData: {
+            srcAddress: vaultAddress,
+          },
         }),
         mockDb,
       });
@@ -396,6 +427,9 @@ describe("LLPVault contract tests", () => {
       mockDb = await LLPVault.TradingFeePaid.processEvent({
         event: LLPVault.TradingFeePaid.createMockEvent({
           amount: BigInt(1000e6),
+          mockEventData: {
+            srcAddress: vaultAddress,
+          },
         }),
         mockDb,
       });
@@ -416,14 +450,14 @@ describe("LLPVault contract tests", () => {
           owner: alice,
           assets: BigInt(10000e6),
           shares: BigInt(10000e6),
-          mockEventData: { block: { number: 1000 } },
+          mockEventData: { block: { number: 1000 }, srcAddress: vaultAddress },
         }),
         mockDb,
       });
 
       const feeEvent = LLPVault.LiquidationFeePaid.createMockEvent({
         amount: BigInt(50e6),
-        mockEventData: { block: { number: 1001 } },
+        mockEventData: { block: { number: 1001 }, srcAddress: vaultAddress },
       });
 
       mockDb = await LLPVault.LiquidationFeePaid.processEvent({
@@ -452,7 +486,7 @@ describe("LLPVault contract tests", () => {
           owner: alice,
           assets: BigInt(10000e6),
           shares: BigInt(10000e6),
-          mockEventData: { block: { number: 1000 } },
+          mockEventData: { block: { number: 1000 }, srcAddress: vaultAddress },
         }),
         mockDb,
       });
@@ -460,7 +494,7 @@ describe("LLPVault contract tests", () => {
       const pnlEvent = LLPVault.TraderPnLSettled.createMockEvent({
         pnl: BigInt(-500e6),
         newTotalAssets: BigInt(10500e6),
-        mockEventData: { block: { number: 1001 } },
+        mockEventData: { block: { number: 1001 }, srcAddress: vaultAddress },
       });
 
       mockDb = await LLPVault.TraderPnLSettled.processEvent({
@@ -493,7 +527,7 @@ describe("LLPVault contract tests", () => {
           owner: alice,
           assets: BigInt(10000e6),
           shares: BigInt(10000e6),
-          mockEventData: { block: { number: 1000 } },
+          mockEventData: { block: { number: 1000 }, srcAddress: vaultAddress },
         }),
         mockDb,
       });
@@ -501,7 +535,7 @@ describe("LLPVault contract tests", () => {
       const pnlEvent = LLPVault.TraderPnLSettled.createMockEvent({
         pnl: BigInt(500e6),
         newTotalAssets: BigInt(9500e6),
-        mockEventData: { block: { number: 1001 } },
+        mockEventData: { block: { number: 1001 }, srcAddress: vaultAddress },
       });
 
       mockDb = await LLPVault.TraderPnLSettled.processEvent({
@@ -526,6 +560,9 @@ describe("LLPVault contract tests", () => {
           owner: alice,
           assets: BigInt(10000e6),
           shares: BigInt(10000e6),
+          mockEventData: {
+            srcAddress: vaultAddress,
+          },
         }),
         mockDb,
       });
@@ -534,6 +571,9 @@ describe("LLPVault contract tests", () => {
         event: LLPVault.TraderPnLSettled.createMockEvent({
           pnl: BigInt(0),
           newTotalAssets: BigInt(10000e6),
+          mockEventData: {
+            srcAddress: vaultAddress,
+          },
         }),
         mockDb,
       });
@@ -556,7 +596,7 @@ describe("LLPVault contract tests", () => {
           owner: alice,
           assets: BigInt(10000e6),
           shares: BigInt(10000e6),
-          mockEventData: { block: { number: 1000 } },
+          mockEventData: { block: { number: 1000 }, srcAddress: vaultAddress },
         }),
         mockDb,
       });
@@ -564,7 +604,7 @@ describe("LLPVault contract tests", () => {
       const fundingEvent = LLPVault.FundingPaymentRecorded.createMockEvent({
         netFundingPnL: BigInt(200e6),
         newTotalAssets: BigInt(10200e6),
-        mockEventData: { block: { number: 1001 } },
+        mockEventData: { block: { number: 1001 }, srcAddress: vaultAddress },
       });
 
       mockDb = await LLPVault.FundingPaymentRecorded.processEvent({
@@ -593,7 +633,7 @@ describe("LLPVault contract tests", () => {
           owner: alice,
           assets: BigInt(10000e6),
           shares: BigInt(10000e6),
-          mockEventData: { block: { number: 1000 } },
+          mockEventData: { block: { number: 1000 }, srcAddress: vaultAddress },
         }),
         mockDb,
       });
@@ -601,7 +641,7 @@ describe("LLPVault contract tests", () => {
       const fundingEvent = LLPVault.FundingPaymentRecorded.createMockEvent({
         netFundingPnL: BigInt(-100e6),
         newTotalAssets: BigInt(9900e6),
-        mockEventData: { block: { number: 1001 } },
+        mockEventData: { block: { number: 1001 }, srcAddress: vaultAddress },
       });
 
       mockDb = await LLPVault.FundingPaymentRecorded.processEvent({
@@ -632,6 +672,9 @@ describe("LLPVault contract tests", () => {
           owner: alice,
           assets: BigInt(10000e6),
           shares: BigInt(10000e6),
+          mockEventData: {
+            srcAddress: vaultAddress,
+          },
         }),
         mockDb,
       });
@@ -639,6 +682,9 @@ describe("LLPVault contract tests", () => {
       mockDb = await LLPVault.TradingFeePaid.processEvent({
         event: LLPVault.TradingFeePaid.createMockEvent({
           amount: BigInt(500e6),
+          mockEventData: {
+            srcAddress: vaultAddress,
+          },
         }),
         mockDb,
       });
@@ -655,6 +701,9 @@ describe("LLPVault contract tests", () => {
 
       const event = LLPVault.TradingFeePaid.createMockEvent({
         amount: BigInt(100e6),
+        mockEventData: {
+          srcAddress: vaultAddress,
+        },
       });
 
       const mockDbUpdated = await LLPVault.TradingFeePaid.processEvent({
@@ -680,7 +729,7 @@ describe("LLPVault contract tests", () => {
           owner: alice,
           assets: BigInt(10000e6),
           shares: BigInt(10000e6),
-          mockEventData: { block: { number: 1000 } },
+          mockEventData: { block: { number: 1000 }, srcAddress: vaultAddress },
         }),
         mockDb,
       });
@@ -688,7 +737,7 @@ describe("LLPVault contract tests", () => {
       mockDb = await LLPVault.TradingFeePaid.processEvent({
         event: LLPVault.TradingFeePaid.createMockEvent({
           amount: BigInt(1000e6),
-          mockEventData: { block: { number: 1001 } },
+          mockEventData: { block: { number: 1001 }, srcAddress: vaultAddress },
         }),
         mockDb,
       });
@@ -720,7 +769,7 @@ describe("LLPVault contract tests", () => {
           owner: alice,
           assets: BigInt(10000e6),
           shares: BigInt(10000e6),
-          mockEventData: { block: { number: 1000 } },
+          mockEventData: { block: { number: 1000 }, srcAddress: vaultAddress },
         }),
         mockDb,
       });
@@ -728,7 +777,7 @@ describe("LLPVault contract tests", () => {
       mockDb = await LLPVault.TradingFeePaid.processEvent({
         event: LLPVault.TradingFeePaid.createMockEvent({
           amount: BigInt(1000e6),
-          mockEventData: { block: { number: 1001 } },
+          mockEventData: { block: { number: 1001 }, srcAddress: vaultAddress },
         }),
         mockDb,
       });
@@ -740,7 +789,7 @@ describe("LLPVault contract tests", () => {
           owner: alice,
           assets: BigInt(5500e6),
           shares: BigInt(5000e6),
-          mockEventData: { block: { number: 1002 } },
+          mockEventData: { block: { number: 1002 }, srcAddress: vaultAddress },
         }),
         mockDb,
       });
@@ -763,7 +812,7 @@ describe("LLPVault contract tests", () => {
           owner: alice,
           assets: BigInt(10000e6),
           shares: BigInt(10000e6),
-          mockEventData: { block: { number: 1000 } },
+          mockEventData: { block: { number: 1000 }, srcAddress: vaultAddress },
         }),
         mockDb,
       });
@@ -771,7 +820,7 @@ describe("LLPVault contract tests", () => {
       mockDb = await LLPVault.TradingFeePaid.processEvent({
         event: LLPVault.TradingFeePaid.createMockEvent({
           amount: BigInt(1000e6),
-          mockEventData: { block: { number: 1001 } },
+          mockEventData: { block: { number: 1001 }, srcAddress: vaultAddress },
         }),
         mockDb,
       });
@@ -782,7 +831,7 @@ describe("LLPVault contract tests", () => {
           owner: alice,
           assets: BigInt(11000e6),
           shares: BigInt(10000e6),
-          mockEventData: { block: { number: 1002 } },
+          mockEventData: { block: { number: 1002 }, srcAddress: vaultAddress },
         }),
         mockDb,
       });
@@ -807,7 +856,7 @@ describe("LLPVault contract tests", () => {
           owner: alice,
           assets: BigInt(10000e6),
           shares: BigInt(10000e6),
-          mockEventData: { block: { number: 1000 } },
+          mockEventData: { block: { number: 1000 }, srcAddress: vaultAddress },
         }),
         mockDb,
       });
@@ -818,7 +867,7 @@ describe("LLPVault contract tests", () => {
           owner: bob,
           assets: BigInt(90000e6),
           shares: BigInt(90000e6),
-          mockEventData: { block: { number: 1001 } },
+          mockEventData: { block: { number: 1001 }, srcAddress: vaultAddress },
         }),
         mockDb,
       });
@@ -826,7 +875,7 @@ describe("LLPVault contract tests", () => {
       mockDb = await LLPVault.TradingFeePaid.processEvent({
         event: LLPVault.TradingFeePaid.createMockEvent({
           amount: BigInt(5000e6),
-          mockEventData: { block: { number: 1002 } },
+          mockEventData: { block: { number: 1002 }, srcAddress: vaultAddress },
         }),
         mockDb,
       });
@@ -872,7 +921,7 @@ describe("LLPVault contract tests", () => {
           owner: alice,
           assets: BigInt(10000e6),
           shares: BigInt(10000e6),
-          mockEventData: { block: { number: 1000 } },
+          mockEventData: { block: { number: 1000 }, srcAddress: vaultAddress },
         }),
         mockDb,
       });
@@ -880,7 +929,7 @@ describe("LLPVault contract tests", () => {
       mockDb = await LLPVault.TradingFeePaid.processEvent({
         event: LLPVault.TradingFeePaid.createMockEvent({
           amount: BigInt(100e6),
-          mockEventData: { block: { number: 1001 } },
+          mockEventData: { block: { number: 1001 }, srcAddress: vaultAddress },
         }),
         mockDb,
       });
@@ -888,7 +937,7 @@ describe("LLPVault contract tests", () => {
       mockDb = await LLPVault.LiquidationFeePaid.processEvent({
         event: LLPVault.LiquidationFeePaid.createMockEvent({
           amount: BigInt(50e6),
-          mockEventData: { block: { number: 1002 } },
+          mockEventData: { block: { number: 1002 }, srcAddress: vaultAddress },
         }),
         mockDb,
       });
@@ -897,7 +946,7 @@ describe("LLPVault contract tests", () => {
         event: LLPVault.TraderPnLSettled.createMockEvent({
           pnl: BigInt(-200e6),
           newTotalAssets: BigInt(10350e6),
-          mockEventData: { block: { number: 1003 } },
+          mockEventData: { block: { number: 1003 }, srcAddress: vaultAddress },
         }),
         mockDb,
       });
@@ -906,7 +955,7 @@ describe("LLPVault contract tests", () => {
         event: LLPVault.FundingPaymentRecorded.createMockEvent({
           netFundingPnL: BigInt(30e6),
           newTotalAssets: BigInt(10380e6),
-          mockEventData: { block: { number: 1004 } },
+          mockEventData: { block: { number: 1004 }, srcAddress: vaultAddress },
         }),
         mockDb,
       });
@@ -930,6 +979,9 @@ describe("LLPVault contract tests", () => {
         owner: alice,
         assets: BigInt(0),
         shares: BigInt(0),
+        mockEventData: {
+          srcAddress: vaultAddress,
+        },
       });
 
       const mockDbUpdated = await LLPVault.Deposit.processEvent({
@@ -952,6 +1004,9 @@ describe("LLPVault contract tests", () => {
         owner: alice,
         assets: largeAmount,
         shares: largeAmount,
+        mockEventData: {
+          srcAddress: vaultAddress,
+        },
       });
 
       const mockDbUpdated = await LLPVault.Deposit.processEvent({
@@ -973,6 +1028,9 @@ describe("LLPVault contract tests", () => {
         owner: alice,
         assets: BigInt(1000e6),
         shares: BigInt(1000e6),
+        mockEventData: {
+          srcAddress: vaultAddress,
+        },
       });
 
       const mockDbUpdated = await LLPVault.Withdraw.processEvent({
@@ -992,6 +1050,9 @@ describe("LLPVault contract tests", () => {
 
       const event = LLPVault.TradingFeePaid.createMockEvent({
         amount: BigInt(100e6),
+        mockEventData: {
+          srcAddress: vaultAddress,
+        },
       });
 
       const mockDbUpdated = await LLPVault.TradingFeePaid.processEvent({
@@ -1015,6 +1076,9 @@ describe("LLPVault contract tests", () => {
           owner: alice,
           assets: BigInt(10000e6),
           shares: BigInt(10000e6),
+          mockEventData: {
+            srcAddress: vaultAddress,
+          },
         }),
         mockDb,
       });
@@ -1023,6 +1087,9 @@ describe("LLPVault contract tests", () => {
         event: LLPVault.FeeUpdated.createMockEvent({
           feeType: "deposit",
           newRate: BigInt(50),
+          mockEventData: {
+            srcAddress: vaultAddress,
+          },
         }),
         mockDb,
       });
@@ -1042,6 +1109,9 @@ describe("LLPVault contract tests", () => {
           owner: alice,
           assets: BigInt(10000e6),
           shares: BigInt(10000e6),
+          mockEventData: {
+            srcAddress: vaultAddress,
+          },
         }),
         mockDb,
       });
@@ -1050,6 +1120,9 @@ describe("LLPVault contract tests", () => {
         event: LLPVault.FeeUpdated.createMockEvent({
           feeType: "withdrawal",
           newRate: BigInt(25),
+          mockEventData: {
+            srcAddress: vaultAddress,
+          },
         }),
         mockDb,
       });
@@ -1071,6 +1144,9 @@ describe("LLPVault contract tests", () => {
           owner: alice,
           assets: BigInt(10000e6),
           shares: BigInt(10000e6),
+          mockEventData: {
+            srcAddress: vaultAddress,
+          },
         }),
         mockDb,
       });
@@ -1078,6 +1154,9 @@ describe("LLPVault contract tests", () => {
       mockDb = await LLPVault.DepositsPaused.processEvent({
         event: LLPVault.DepositsPaused.createMockEvent({
           paused: true,
+          mockEventData: {
+            srcAddress: vaultAddress,
+          },
         }),
         mockDb,
       });
@@ -1096,6 +1175,9 @@ describe("LLPVault contract tests", () => {
           owner: alice,
           assets: BigInt(10000e6),
           shares: BigInt(10000e6),
+          mockEventData: {
+            srcAddress: vaultAddress,
+          },
         }),
         mockDb,
       });
@@ -1103,6 +1185,9 @@ describe("LLPVault contract tests", () => {
       mockDb = await LLPVault.WithdrawalsPaused.processEvent({
         event: LLPVault.WithdrawalsPaused.createMockEvent({
           paused: true,
+          mockEventData: {
+            srcAddress: vaultAddress,
+          },
         }),
         mockDb,
       });
@@ -1121,6 +1206,9 @@ describe("LLPVault contract tests", () => {
         from: alice,
         to: bob,
         amount: BigInt(1000e6),
+        mockEventData: {
+          srcAddress: vaultAddress,
+        },
       });
 
       const mockDbUpdated = await LLPVault.Transfer.processEvent({
@@ -1148,7 +1236,7 @@ describe("LLPVault contract tests", () => {
           owner: alice,
           assets: BigInt(10000e6),
           shares: BigInt(10000e6),
-          mockEventData: { block: { number: 1000 } },
+          mockEventData: { block: { number: 1000 }, srcAddress: vaultAddress },
         }),
         mockDb,
       });
@@ -1156,7 +1244,7 @@ describe("LLPVault contract tests", () => {
       mockDb = await LLPVault.TradingFeePaid.processEvent({
         event: LLPVault.TradingFeePaid.createMockEvent({
           amount: BigInt(100e6),
-          mockEventData: { block: { number: 1001 } },
+          mockEventData: { block: { number: 1001 }, srcAddress: vaultAddress },
         }),
         mockDb,
       });
@@ -1165,7 +1253,7 @@ describe("LLPVault contract tests", () => {
         event: LLPVault.TraderPnLSettled.createMockEvent({
           pnl: BigInt(-200e6),
           newTotalAssets: BigInt(10300e6),
-          mockEventData: { block: { number: 1002 } },
+          mockEventData: { block: { number: 1002 }, srcAddress: vaultAddress },
         }),
         mockDb,
       });
@@ -1174,7 +1262,7 @@ describe("LLPVault contract tests", () => {
         event: LLPVault.TraderPnLSettled.createMockEvent({
           pnl: BigInt(50e6),
           newTotalAssets: BigInt(10250e6),
-          mockEventData: { block: { number: 1003 } },
+          mockEventData: { block: { number: 1003 }, srcAddress: vaultAddress },
         }),
         mockDb,
       });
@@ -1197,7 +1285,10 @@ describe("LLPVault contract tests", () => {
           owner: alice,
           assets: BigInt(100000e6),
           shares: BigInt(100000e6),
-          mockEventData: { block: { number: 1000, timestamp: 1000000 } },
+          mockEventData: {
+            block: { number: 1000, timestamp: 1000000 },
+            srcAddress: vaultAddress,
+          },
         }),
         mockDb,
       });
@@ -1208,7 +1299,10 @@ describe("LLPVault contract tests", () => {
           owner: bob,
           assets: BigInt(900000e6),
           shares: BigInt(900000e6),
-          mockEventData: { block: { number: 1001, timestamp: 1000100 } },
+          mockEventData: {
+            block: { number: 1001, timestamp: 1000100 },
+            srcAddress: vaultAddress,
+          },
         }),
         mockDb,
       });
@@ -1216,7 +1310,7 @@ describe("LLPVault contract tests", () => {
       mockDb = await LLPVault.TradingFeePaid.processEvent({
         event: LLPVault.TradingFeePaid.createMockEvent({
           amount: BigInt(10000e6),
-          mockEventData: { block: { number: 1002 } },
+          mockEventData: { block: { number: 1002 }, srcAddress: vaultAddress },
         }),
         mockDb,
       });
@@ -1224,7 +1318,7 @@ describe("LLPVault contract tests", () => {
       mockDb = await LLPVault.LiquidationFeePaid.processEvent({
         event: LLPVault.LiquidationFeePaid.createMockEvent({
           amount: BigInt(5000e6),
-          mockEventData: { block: { number: 1003 } },
+          mockEventData: { block: { number: 1003 }, srcAddress: vaultAddress },
         }),
         mockDb,
       });
@@ -1233,7 +1327,7 @@ describe("LLPVault contract tests", () => {
         event: LLPVault.TraderPnLSettled.createMockEvent({
           pnl: BigInt(-20000e6),
           newTotalAssets: BigInt(1035000e6),
-          mockEventData: { block: { number: 1004 } },
+          mockEventData: { block: { number: 1004 }, srcAddress: vaultAddress },
         }),
         mockDb,
       });
@@ -1242,7 +1336,7 @@ describe("LLPVault contract tests", () => {
         event: LLPVault.FundingPaymentRecorded.createMockEvent({
           netFundingPnL: BigInt(3000e6),
           newTotalAssets: BigInt(1038000e6),
-          mockEventData: { block: { number: 1005 } },
+          mockEventData: { block: { number: 1005 }, srcAddress: vaultAddress },
         }),
         mockDb,
       });
@@ -1251,7 +1345,7 @@ describe("LLPVault contract tests", () => {
         event: LLPVault.TraderPnLSettled.createMockEvent({
           pnl: BigInt(8000e6),
           newTotalAssets: BigInt(1030000e6),
-          mockEventData: { block: { number: 1006 } },
+          mockEventData: { block: { number: 1006 }, srcAddress: vaultAddress },
         }),
         mockDb,
       });
@@ -1290,6 +1384,174 @@ describe("LLPVault contract tests", () => {
     });
   });
 
+  describe("Separate vaults per contract address", () => {
+    const newVaultAddress = "0x1234567890123456789012345678901234567890";
+    const newVaultId = `${chainId}_${newVaultAddress.toLowerCase()}`;
+
+    it("should create separate vault entities for different contract addresses", async () => {
+      let mockDb = MockDb.createMockDb();
+
+      // Deposit to first vault
+      const deposit1 = LLPVault.Deposit.createMockEvent({
+        by: alice,
+        owner: alice,
+        assets: BigInt(10000e6),
+        shares: BigInt(10000e6),
+        mockEventData: {
+          srcAddress: vaultAddress,
+        },
+      });
+
+      mockDb = await LLPVault.Deposit.processEvent({
+        event: deposit1,
+        mockDb,
+      });
+
+      // Deposit to second vault (different address)
+      const deposit2 = LLPVault.Deposit.createMockEvent({
+        by: bob,
+        owner: bob,
+        assets: BigInt(5000e6),
+        shares: BigInt(5000e6),
+        mockEventData: {
+          srcAddress: newVaultAddress,
+        },
+      });
+
+      mockDb = await LLPVault.Deposit.processEvent({
+        event: deposit2,
+        mockDb,
+      });
+
+      const vault1 = mockDb.entities.Vault.get(vaultId);
+      const vault2 = mockDb.entities.Vault.get(newVaultId);
+
+      assert.ok(vault1, "First vault should be created");
+      assert.ok(vault2, "Second vault should be created");
+      assert.strictEqual(
+        vault1?.address.toLowerCase(),
+        vaultAddress.toLowerCase(),
+        "First vault should have correct address"
+      );
+      assert.strictEqual(
+        vault2?.address.toLowerCase(),
+        newVaultAddress.toLowerCase(),
+        "Second vault should have correct address"
+      );
+      assert.strictEqual(
+        vault1?.totalAssets,
+        BigInt(10000e6),
+        "First vault should have its own assets"
+      );
+      assert.strictEqual(
+        vault2?.totalAssets,
+        BigInt(5000e6),
+        "Second vault should have its own assets"
+      );
+    });
+
+    it("should create new vault when contract address changes after initial deployment", async () => {
+      let mockDb = MockDb.createMockDb();
+
+      // Initial deployment - create vault with first address
+      mockDb = await LLPVault.Deposit.processEvent({
+        event: LLPVault.Deposit.createMockEvent({
+          by: alice,
+          owner: alice,
+          assets: BigInt(10000e6),
+          shares: BigInt(10000e6),
+          mockEventData: {
+            srcAddress: vaultAddress,
+            block: { number: 1000 },
+          },
+        }),
+        mockDb,
+      });
+
+      // Add some fees to first vault
+      mockDb = await LLPVault.TradingFeePaid.processEvent({
+        event: LLPVault.TradingFeePaid.createMockEvent({
+          amount: BigInt(500e6),
+          mockEventData: {
+            srcAddress: vaultAddress,
+            block: { number: 1001 },
+          },
+        }),
+        mockDb,
+      });
+
+      const oldVault = mockDb.entities.Vault.get(vaultId);
+      assert.ok(oldVault, "Old vault should exist");
+      assert.strictEqual(oldVault?.totalAssets, BigInt(10500e6));
+      assert.strictEqual(oldVault?.tradingFeesCollected, BigInt(500e6));
+
+      // New deployment - create vault with new address
+      mockDb = await LLPVault.Deposit.processEvent({
+        event: LLPVault.Deposit.createMockEvent({
+          by: bob,
+          owner: bob,
+          assets: BigInt(20000e6),
+          shares: BigInt(20000e6),
+          mockEventData: {
+            srcAddress: newVaultAddress,
+            block: { number: 2000 },
+          },
+        }),
+        mockDb,
+      });
+
+      // Verify old vault unchanged
+      const oldVaultAfterNew = mockDb.entities.Vault.get(vaultId);
+      assert.ok(oldVaultAfterNew, "Old vault should still exist");
+      assert.strictEqual(
+        oldVaultAfterNew?.totalAssets,
+        BigInt(10500e6),
+        "Old vault assets should be unchanged"
+      );
+      assert.strictEqual(
+        oldVaultAfterNew?.totalShares,
+        BigInt(10000e6),
+        "Old vault shares should be unchanged"
+      );
+
+      // Verify new vault created
+      const newVault = mockDb.entities.Vault.get(newVaultId);
+      assert.ok(newVault, "New vault should be created");
+      assert.strictEqual(
+        newVault?.address.toLowerCase(),
+        newVaultAddress.toLowerCase(),
+        "New vault should have new address"
+      );
+      assert.strictEqual(
+        newVault?.totalAssets,
+        BigInt(20000e6),
+        "New vault should have its own assets"
+      );
+      assert.strictEqual(
+        newVault?.totalShares,
+        BigInt(20000e6),
+        "New vault should have its own shares"
+      );
+      assert.strictEqual(
+        newVault?.tradingFeesCollected,
+        BigInt(0),
+        "New vault should start with zero fees"
+      );
+
+      // Verify both vaults are independent
+      assert.notStrictEqual(
+        vaultId,
+        newVaultId,
+        "Vault IDs should be different"
+      );
+      assert.strictEqual(
+        oldVaultAfterNew?.totalAssets + newVault?.totalAssets,
+        BigInt(30500e6),
+        "Total assets should be sum of both vaults"
+      );
+    });
+  });
+
   describe("Vault state snapshots in revenue events", () => {
     it("should capture vault state after each revenue event", async () => {
       let mockDb = MockDb.createMockDb();
@@ -1300,14 +1562,14 @@ describe("LLPVault contract tests", () => {
           owner: alice,
           assets: BigInt(10000e6),
           shares: BigInt(10000e6),
-          mockEventData: { block: { number: 1000 } },
+          mockEventData: { block: { number: 1000 }, srcAddress: vaultAddress },
         }),
         mockDb,
       });
 
       const fee1 = LLPVault.TradingFeePaid.createMockEvent({
         amount: BigInt(100e6),
-        mockEventData: { block: { number: 1001 } },
+        mockEventData: { block: { number: 1001 }, srcAddress: vaultAddress },
       });
 
       mockDb = await LLPVault.TradingFeePaid.processEvent({
@@ -1317,7 +1579,7 @@ describe("LLPVault contract tests", () => {
 
       const fee2 = LLPVault.TradingFeePaid.createMockEvent({
         amount: BigInt(200e6),
-        mockEventData: { block: { number: 1002 } },
+        mockEventData: { block: { number: 1002 }, srcAddress: vaultAddress },
       });
 
       mockDb = await LLPVault.TradingFeePaid.processEvent({

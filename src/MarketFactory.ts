@@ -1,4 +1,5 @@
 import { MarketFactory, MarketFactory_MarketCreated, Market } from "generated";
+import { getMarketMetadata } from "./effects/getMarketMetadata";
 
 MarketFactory.MarketCreated.handler(async ({ event, context }) => {
   // Create raw event entity for auditing
@@ -14,6 +15,12 @@ MarketFactory.MarketCreated.handler(async ({ event, context }) => {
 
   context.MarketFactory_MarketCreated.set(eventEntity);
 
+  // Fetch market metadata (image) from Polymarket API if applicable
+  const image = await context.effect(getMarketMetadata, {
+    sourceMarketId: event.params.sourceMarketId,
+    sourcePlatform: event.params.sourcePlatform,
+  });
+
   // Create business logic Market entity
   const market: Market = {
     id: `${event.chainId}_${event.params.marketId}`,
@@ -26,10 +33,12 @@ MarketFactory.MarketCreated.handler(async ({ event, context }) => {
     createdAt: BigInt(event.block.timestamp),
     blockNumber: BigInt(event.block.number),
     transactionHash: event.transaction.hash,
+    question: undefined,
+    image: image,
     currentPrice: BigInt(0),
     indexPrice: undefined,
     lastPriceUpdate: BigInt(event.block.timestamp),
-  };
+  } as Market;
 
   context.Market.set(market);
 });

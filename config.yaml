@@ -18,7 +18,7 @@ networks:
           - event: TWAPPeriodUpdated(uint32 newPeriod)
       - name: LLPVault
         address:
-          - 0xBCF9CEAA41165AfCD485C9dA224a9b99BA9a183b
+          - 0xb291a223bc6781b384f15707470436b34d12aaa0
         handler: src/LLPVault.ts
         events:
           - event: Deposit(address indexed by, address indexed owner, uint256 assets, uint256 shares)
