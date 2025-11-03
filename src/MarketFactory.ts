@@ -38,6 +38,7 @@ MarketFactory.MarketCreated.handler(async ({ event, context }) => {
     currentPrice: BigInt(0),
     indexPrice: undefined,
     lastPriceUpdate: BigInt(event.block.timestamp),
+    volume: BigInt(0),
   } as Market;
 
   context.Market.set(market);

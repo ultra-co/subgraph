@@ -5,7 +5,7 @@ import {
   Position,
   Trader,
 } from "../generated";
-const { MockDb, LiquidationEngine, LiquidRouter } = TestHelpers;
+const { MockDb, LiquidationEngine, LiquidRouter, MarketFactory } = TestHelpers;
 
 describe("LiquidationEngine contract tests", () => {
   const chainId = 84532;
@@ -16,9 +16,27 @@ describe("LiquidationEngine contract tests", () => {
   const marketId =
     "0x11a7b57e001bda319e451764e4feeb8705831bcb55eb9b4a4f9bf6a0b21179a3";
 
+  // Helper function to create a market for tests
+  async function createMarket(mockDb: any) {
+    const marketEvent = MarketFactory.MarketCreated.createMockEvent({
+      marketId,
+      name: "Test Market",
+      sourcePlatform: "Polymarket",
+      sourceMarketId: "test-123",
+      expiryTimestamp: BigInt(1735689600),
+      creator: "0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb",
+    });
+
+    return await MarketFactory.MarketCreated.processEvent({
+      event: marketEvent,
+      mockDb,
+    });
+  }
+
   describe("PositionLiquidated event", () => {
     it("should liquidate position and update trader stats", async () => {
       let mockDb = MockDb.createMockDb();
+      mockDb = await createMarket(mockDb);
 
       const openEvent = LiquidRouter.PositionOpened.createMockEvent({
         user: trader,
@@ -72,6 +90,8 @@ describe("LiquidationEngine contract tests", () => {
 
     it("should handle multiple liquidations for same trader", async () => {
       let mockDb = MockDb.createMockDb();
+      mockDb = await createMarket(mockDb);
+
       const positionKey1 =
         "0xaaaa000000000000000000000000000000000000000000000000000000000001";
       const positionKey2 =
@@ -150,6 +170,7 @@ describe("LiquidationEngine contract tests", () => {
 
     it("should store liquidation details correctly", async () => {
       let mockDb = MockDb.createMockDb();
+      mockDb = await createMarket(mockDb);
 
       const openEvent = LiquidRouter.PositionOpened.createMockEvent({
         user: trader,
@@ -197,6 +218,7 @@ describe("LiquidationEngine contract tests", () => {
 
     it("should handle zero collateral seized", async () => {
       let mockDb = MockDb.createMockDb();
+      mockDb = await createMarket(mockDb);
 
       const openEvent = LiquidRouter.PositionOpened.createMockEvent({
         user: trader,

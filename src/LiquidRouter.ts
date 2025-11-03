@@ -449,7 +449,22 @@ LiquidRouter.PositionOpened.handler(async ({ event, context }) => {
   context.Trader.set(updatedTrader);
 
   const marketFullId = `${event.chainId}_${event.params.marketId}`;
-  const market = await context.Market.get(marketFullId);
+  let market = await context.Market.get(marketFullId);
+
+  if (!market) {
+    context.log.warn(
+      `Market ${marketFullId} not found, skipping position creation`
+    );
+    return;
+  }
+
+  // Update market volume
+  const updatedMarket: Market = {
+    ...market,
+    volume: market.volume + event.params.size,
+  };
+
+  context.Market.set(updatedMarket);
 
   const indexPriceResult = await context.effect(getIndexPrice, {
     marketId: event.params.marketId,
