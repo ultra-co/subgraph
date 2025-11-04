@@ -8,11 +8,16 @@ import {
   PriceObservation,
   PriceCandle,
   MarketPositionTracker,
+  TraderPnLSnapshot,
 } from "generated";
 import { getIndexPrice } from "./effects/getPrice";
 import { getMarketMetadata } from "./effects/getMarketMetadata";
 import { MARKET_QUESTIONS } from "./constants/marketQuestions";
-import { getPeriodStart, getPeriodDuration } from "./utils/priceHelpers";
+import {
+  getPeriodStart,
+  getPeriodDuration,
+  calculatePositionPnl,
+} from "./utils/priceHelpers";
 import { createPositionPnLSnapshot } from "./LiquidRouter";
 
 const CANDLE_INTERVALS = [
@@ -193,6 +198,7 @@ async function updateCandle(
 /**
  * Create PnL snapshots for all open positions in a market.
  * Called on every price update to enable continuous PnL charting.
+ * Also creates aggregated trader PnL snapshots.
  */
 async function createPnLSnapshotsForMarket(
   context: any,
@@ -213,6 +219,12 @@ async function createPnLSnapshotsForMarket(
   // Parse the comma-separated list of position IDs
   const positionIds = tracker.openPositionIds.split(",");
 
+  // Track trader data for aggregation
+  const traderData = new Map<
+    string,
+    { unrealizedPnl: bigint; totalCollateral: bigint }
+  >();
+
   // Create a snapshot for each open position
   for (const positionId of positionIds) {
     if (!positionId) continue; // Skip empty strings
@@ -228,8 +240,75 @@ async function createPnLSnapshotsForMarket(
         BigInt(blockNumber),
         chainId
       );
+
+      // Aggregate PnL and collateral by trader
+      const traderId = position.trader_id;
+      const current = traderData.get(traderId) || {
+        unrealizedPnl: BigInt(0),
+        totalCollateral: BigInt(0),
+      };
+
+      const positionPnl = calculatePositionPnl(position, indexPrice);
+
+      traderData.set(traderId, {
+        unrealizedPnl: current.unrealizedPnl + positionPnl,
+        totalCollateral: current.totalCollateral + position.collateral,
+      });
     }
   }
+
+  // Create trader PnL snapshots
+  for (const [traderId, data] of traderData) {
+    await createTraderPnLSnapshot(
+      context,
+      traderId,
+      data.unrealizedPnl,
+      data.totalCollateral,
+      timestamp,
+      blockNumber,
+      chainId
+    );
+  }
+}
+
+/**
+ * Create a trader PnL snapshot aggregating all their open positions.
+ */
+async function createTraderPnLSnapshot(
+  context: any,
+  traderId: string,
+  unrealizedPnl: bigint,
+  totalCollateral: bigint,
+  timestamp: bigint,
+  blockNumber: number,
+  chainId: number
+) {
+  const trader = await context.Trader.get(traderId);
+
+  if (!trader) {
+    return;
+  }
+
+  // Total PnL = realized (from closed positions) + unrealized (from open positions)
+  const totalPnl = trader.realizedPnl + unrealizedPnl;
+
+  // PnL percentage based on current deployed collateral
+  const pnlPercentage =
+    totalCollateral > BigInt(0)
+      ? (totalPnl * BigInt(1e18)) / totalCollateral
+      : BigInt(0);
+
+  const snapshot: TraderPnLSnapshot = {
+    id: `${chainId}_${traderId}_${timestamp}`,
+    trader_id: traderId,
+    pnl: totalPnl,
+    pnlPercentage,
+    positionCount: trader.openPositions,
+    timestamp,
+    blockNumber: BigInt(blockNumber),
+  };
+
+  context.TraderPnLSnapshot.set(snapshot);
 }
 
 ProbabilityOracle.PriceUpdaterChanged.handler(async ({ event, context }) => {

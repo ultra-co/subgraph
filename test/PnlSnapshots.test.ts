@@ -2,6 +2,7 @@ import assert from "assert";
 import {
   TestHelpers,
   PositionPnLSnapshot,
+  TraderPnLSnapshot,
   Position,
   MarketPositionTracker,
 } from "../generated";
@@ -376,6 +377,238 @@ describe("PnL Snapshot Tests", () => {
     });
   });
 
+  describe("Trader PnL Aggregation", () => {
+    it("should create trader PnL snapshot on price update", async () => {
+      let mockDb = MockDb.createMockDb();
+      mockDb = await createMarket(mockDb);
+
+      // Open position
+      const openEvent = LiquidRouter.PositionOpened.createMockEvent({
+        user: trader,
+        positionKey,
+        marketId,
+        collateral: BigInt(1000e6),
+        size: BigInt(10000e6),
+        isLong: true,
+        totalFee: BigInt(10e6),
+        lpFee: BigInt(8e6),
+        protocolFee: BigInt(2e6),
+      });
+
+      mockDb = await LiquidRouter.PositionOpened.processEvent({
+        event: openEvent,
+        mockDb,
+      });
+
+      // Price update should create trader snapshot
+      const priceEvent = ProbabilityOracle.PriceUpdated.createMockEvent({
+        marketId,
+        price: BigInt(5500),
+        timestamp: BigInt(1700000000),
+      });
+
+      const mockDbUpdated = await ProbabilityOracle.PriceUpdated.processEvent({
+        event: priceEvent,
+        mockDb,
+      });
+
+      const traderSnapshotId = `${chainId}_${chainId}_${trader}_${BigInt(
+        1700000000
+      )}`;
+      const traderSnapshot =
+        mockDbUpdated.entities.TraderPnLSnapshot.get(traderSnapshotId);
+
+      assert.ok(traderSnapshot, "Trader snapshot should exist");
+      assert.strictEqual(
+        traderSnapshot?.trader_id,
+        `${chainId}_${trader}`,
+        "Should reference correct trader"
+      );
+      assert.strictEqual(
+        traderSnapshot?.positionCount,
+        BigInt(1),
+        "Should show 1 open position"
+      );
+      assert.ok(
+        traderSnapshot?.pnlPercentage !== undefined,
+        "Should have pnlPercentage"
+      );
+    });
+
+    it("should aggregate unrealized PnL from multiple positions", async () => {
+      let mockDb = MockDb.createMockDb();
+      mockDb = await createMarket(mockDb);
+
+      // Open first position
+      const event1 = LiquidRouter.PositionOpened.createMockEvent({
+        user: trader,
+        positionKey,
+        marketId,
+        collateral: BigInt(1000e6),
+        size: BigInt(10000e6),
+        isLong: true,
+        totalFee: BigInt(10e6),
+        lpFee: BigInt(8e6),
+        protocolFee: BigInt(2e6),
+      });
+
+      mockDb = await LiquidRouter.PositionOpened.processEvent({
+        event: event1,
+        mockDb,
+      });
+
+      // Open second position for same trader
+      const positionKey2 =
+        "0xabcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567891";
+      const event2 = LiquidRouter.PositionOpened.createMockEvent({
+        user: trader,
+        positionKey: positionKey2,
+        marketId,
+        collateral: BigInt(2000e6),
+        size: BigInt(5000e6),
+        isLong: false,
+        totalFee: BigInt(5e6),
+        lpFee: BigInt(4e6),
+        protocolFee: BigInt(1e6),
+      });
+
+      mockDb = await LiquidRouter.PositionOpened.processEvent({
+        event: event2,
+        mockDb,
+      });
+
+      // Price update should aggregate both positions
+      const priceEvent = ProbabilityOracle.PriceUpdated.createMockEvent({
+        marketId,
+        price: BigInt(5500),
+        timestamp: BigInt(1700000000),
+      });
+
+      const mockDbUpdated = await ProbabilityOracle.PriceUpdated.processEvent({
+        event: priceEvent,
+        mockDb,
+      });
+
+      const traderSnapshotId = `${chainId}_${chainId}_${trader}_${BigInt(
+        1700000000
+      )}`;
+      const traderSnapshot =
+        mockDbUpdated.entities.TraderPnLSnapshot.get(traderSnapshotId);
+
+      assert.ok(traderSnapshot, "Trader snapshot should exist");
+      assert.strictEqual(
+        traderSnapshot?.positionCount,
+        BigInt(2),
+        "Should show 2 open positions"
+      );
+      // Both positions at entry price, so PnL should be 0
+      assert.strictEqual(
+        traderSnapshot?.pnl,
+        BigInt(0),
+        "PnL should be 0 at entry price"
+      );
+      assert.strictEqual(
+        traderSnapshot?.pnlPercentage,
+        BigInt(0),
+        "PnL percentage should be 0 at entry price"
+      );
+    });
+
+    it("should include realized PnL in trader snapshot", async () => {
+      let mockDb = MockDb.createMockDb();
+      mockDb = await createMarket(mockDb);
+
+      // Open and close a position (creates realized PnL)
+      const openEvent = LiquidRouter.PositionOpened.createMockEvent({
+        user: trader,
+        positionKey,
+        marketId,
+        collateral: BigInt(1000e6),
+        size: BigInt(10000e6),
+        isLong: true,
+        totalFee: BigInt(10e6),
+        lpFee: BigInt(8e6),
+        protocolFee: BigInt(2e6),
+      });
+
+      mockDb = await LiquidRouter.PositionOpened.processEvent({
+        event: openEvent,
+        mockDb,
+      });
+
+      const closeEvent = LiquidRouter.PositionClosed.createMockEvent({
+        user: trader,
+        positionKey,
+        pnl: BigInt(100e6), // $100 profit
+        totalFee: BigInt(10e6),
+        lpFee: BigInt(8e6),
+        protocolFee: BigInt(2e6),
+        netReturn: BigInt(90e6),
+      });
+
+      mockDb = await LiquidRouter.PositionClosed.processEvent({
+        event: closeEvent,
+        mockDb,
+      });
+
+      // Open another position
+      const positionKey2 =
+        "0xabcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567891";
+      const openEvent2 = LiquidRouter.PositionOpened.createMockEvent({
+        user: trader,
+        positionKey: positionKey2,
+        marketId,
+        collateral: BigInt(500e6),
+        size: BigInt(5000e6),
+        isLong: true,
+        totalFee: BigInt(5e6),
+        lpFee: BigInt(4e6),
+        protocolFee: BigInt(1e6),
+      });
+
+      mockDb = await LiquidRouter.PositionOpened.processEvent({
+        event: openEvent2,
+        mockDb,
+      });
+
+      // Price update should create snapshot with realized + unrealized PnL
+      const priceEvent = ProbabilityOracle.PriceUpdated.createMockEvent({
+        marketId,
+        price: BigInt(5500),
+        timestamp: BigInt(1700000000),
+      });
+
+      const mockDbUpdated = await ProbabilityOracle.PriceUpdated.processEvent({
+        event: priceEvent,
+        mockDb,
+      });
+
+      const traderSnapshotId = `${chainId}_${chainId}_${trader}_${BigInt(
+        1700000000
+      )}`;
+      const traderSnapshot =
+        mockDbUpdated.entities.TraderPnLSnapshot.get(traderSnapshotId);
+
+      assert.ok(traderSnapshot, "Trader snapshot should exist");
+      assert.strictEqual(
+        traderSnapshot?.pnl,
+        BigInt(100e6), // 100 realized + 0 unrealized
+        "Should include realized PnL from closed position"
+      );
+      assert.strictEqual(
+        traderSnapshot?.positionCount,
+        BigInt(1),
+        "Should show 1 open position"
+      );
+      // PnL percentage = (100e6 * 1e18) / 500e6 = 200e18 = 200% (20000% in basis points)
+      assert.ok(
+        traderSnapshot?.pnlPercentage &&
+          traderSnapshot.pnlPercentage > BigInt(0),
+        "Should have positive PnL percentage"
+      );
+    });
+  });
+
   describe("PnL Calculations", () => {
     it("should calculate PnL correctly for long position", async () => {
       let mockDb = MockDb.createMockDb();
@@ -484,6 +717,245 @@ describe("PnL Snapshot Tests", () => {
         priceUpdateSnapshot?.pnl,
         BigInt(0),
         "PnL should be 0 when entry price equals current price"
+      );
+    });
+  });
+
+  describe("Trader PnL Snapshots", () => {
+    it("should create trader snapshot on price update with single position", async () => {
+      let mockDb = MockDb.createMockDb();
+      mockDb = await createMarket(mockDb);
+
+      // Open position
+      const openEvent = LiquidRouter.PositionOpened.createMockEvent({
+        user: trader,
+        positionKey,
+        marketId,
+        collateral: BigInt(1000e6),
+        size: BigInt(10000e6),
+        isLong: true,
+        totalFee: BigInt(10e6),
+        lpFee: BigInt(8e6),
+        protocolFee: BigInt(2e6),
+      });
+
+      mockDb = await LiquidRouter.PositionOpened.processEvent({
+        event: openEvent,
+        mockDb,
+      });
+
+      // Price update
+      const priceEvent = ProbabilityOracle.PriceUpdated.createMockEvent({
+        marketId,
+        price: BigInt(5500),
+        timestamp: BigInt(1700000000),
+      });
+
+      const mockDbUpdated = await ProbabilityOracle.PriceUpdated.processEvent({
+        event: priceEvent,
+        mockDb,
+      });
+
+      // Check trader snapshot was created
+      const traderSnapshotId = `${chainId}_${chainId}_${trader}_${BigInt(
+        1700000000
+      )}`;
+      const traderSnapshot =
+        mockDbUpdated.entities.TraderPnLSnapshot.get(traderSnapshotId);
+
+      assert.ok(traderSnapshot, "Trader snapshot should be created");
+      assert.strictEqual(
+        traderSnapshot?.trader_id,
+        `${chainId}_${trader}`,
+        "Should reference correct trader"
+      );
+      assert.strictEqual(
+        traderSnapshot?.pnl,
+        BigInt(0),
+        "Should have 0 PnL (entry price = current price)"
+      );
+      assert.strictEqual(
+        traderSnapshot?.pnlPercentage,
+        BigInt(0),
+        "Should have 0 PnL percentage"
+      );
+      assert.strictEqual(
+        traderSnapshot?.positionCount,
+        BigInt(1),
+        "Should have 1 open position"
+      );
+    });
+
+    it("should aggregate PnL from multiple positions for same trader", async () => {
+      let mockDb = MockDb.createMockDb();
+      mockDb = await createMarket(mockDb);
+
+      // Open first position
+      const openEvent1 = LiquidRouter.PositionOpened.createMockEvent({
+        user: trader,
+        positionKey: positionKey,
+        marketId,
+        collateral: BigInt(1000e6),
+        size: BigInt(10000e6),
+        isLong: true,
+        totalFee: BigInt(10e6),
+        lpFee: BigInt(8e6),
+        protocolFee: BigInt(2e6),
+      });
+
+      mockDb = await LiquidRouter.PositionOpened.processEvent({
+        event: openEvent1,
+        mockDb,
+      });
+
+      // Open second position (same trader)
+      const positionKey2 =
+        "0xabcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567891";
+      const openEvent2 = LiquidRouter.PositionOpened.createMockEvent({
+        user: trader,
+        positionKey: positionKey2,
+        marketId,
+        collateral: BigInt(2000e6),
+        size: BigInt(5000e6),
+        isLong: false,
+        totalFee: BigInt(5e6),
+        lpFee: BigInt(4e6),
+        protocolFee: BigInt(1e6),
+      });
+
+      mockDb = await LiquidRouter.PositionOpened.processEvent({
+        event: openEvent2,
+        mockDb,
+      });
+
+      // Price update
+      const priceEvent = ProbabilityOracle.PriceUpdated.createMockEvent({
+        marketId,
+        price: BigInt(5500),
+        timestamp: BigInt(1700000000),
+      });
+
+      const mockDbUpdated = await ProbabilityOracle.PriceUpdated.processEvent({
+        event: priceEvent,
+        mockDb,
+      });
+
+      // Check trader snapshot aggregates both positions
+      const traderSnapshotId = `${chainId}_${chainId}_${trader}_${BigInt(
+        1700000000
+      )}`;
+      const traderSnapshot =
+        mockDbUpdated.entities.TraderPnLSnapshot.get(traderSnapshotId);
+
+      assert.ok(traderSnapshot, "Trader snapshot should be created");
+      assert.strictEqual(
+        traderSnapshot?.positionCount,
+        BigInt(2),
+        "Should have 2 open positions"
+      );
+      assert.strictEqual(
+        traderSnapshot?.pnl,
+        BigInt(0),
+        "PnL should be 0 (both positions at entry price)"
+      );
+      assert.strictEqual(
+        traderSnapshot?.pnlPercentage,
+        BigInt(0),
+        "PnL percentage should be 0"
+      );
+    });
+
+    it("should include realized PnL from closed positions", async () => {
+      let mockDb = MockDb.createMockDb();
+      mockDb = await createMarket(mockDb);
+
+      // Open and close first position with profit
+      const openEvent1 = LiquidRouter.PositionOpened.createMockEvent({
+        user: trader,
+        positionKey,
+        marketId,
+        collateral: BigInt(1000e6),
+        size: BigInt(10000e6),
+        isLong: true,
+        totalFee: BigInt(10e6),
+        lpFee: BigInt(8e6),
+        protocolFee: BigInt(2e6),
+      });
+
+      mockDb = await LiquidRouter.PositionOpened.processEvent({
+        event: openEvent1,
+        mockDb,
+      });
+
+      const closeEvent = LiquidRouter.PositionClosed.createMockEvent({
+        user: trader,
+        positionKey,
+        pnl: BigInt(500e6), // $500 profit
+        totalFee: BigInt(10e6),
+        lpFee: BigInt(8e6),
+        protocolFee: BigInt(2e6),
+        netReturn: BigInt(1490e6),
+      });
+
+      mockDb = await LiquidRouter.PositionClosed.processEvent({
+        event: closeEvent,
+        mockDb,
+      });
+
+      // Open second position (still open)
+      const positionKey2 =
+        "0xabcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567891";
+      const openEvent2 = LiquidRouter.PositionOpened.createMockEvent({
+        user: trader,
+        positionKey: positionKey2,
+        marketId,
+        collateral: BigInt(1000e6),
+        size: BigInt(5000e6),
+        isLong: true,
+        totalFee: BigInt(5e6),
+        lpFee: BigInt(4e6),
+        protocolFee: BigInt(1e6),
+      });
+
+      mockDb = await LiquidRouter.PositionOpened.processEvent({
+        event: openEvent2,
+        mockDb,
+      });
+
+      // Price update
+      const priceEvent = ProbabilityOracle.PriceUpdated.createMockEvent({
+        marketId,
+        price: BigInt(5500),
+        timestamp: BigInt(1700000000),
+      });
+
+      const mockDbUpdated = await ProbabilityOracle.PriceUpdated.processEvent({
+        event: priceEvent,
+        mockDb,
+      });
+
+      // Check trader snapshot includes realized PnL
+      const traderSnapshotId = `${chainId}_${chainId}_${trader}_${BigInt(
+        1700000000
+      )}`;
+      const traderSnapshot =
+        mockDbUpdated.entities.TraderPnLSnapshot.get(traderSnapshotId);
+
+      assert.ok(traderSnapshot, "Trader snapshot should be created");
+      assert.strictEqual(
+        traderSnapshot?.pnl,
+        BigInt(500e6),
+        "Should include realized PnL from closed position"
+      );
+      assert.strictEqual(
+        traderSnapshot?.positionCount,
+        BigInt(1),
+        "Should have 1 open position"
+      );
+      assert.ok(
+        traderSnapshot?.pnlPercentage &&
+          traderSnapshot.pnlPercentage > BigInt(0),
+        "Should have positive PnL percentage"
       );
     });
   });
