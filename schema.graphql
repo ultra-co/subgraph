@@ -213,12 +213,19 @@ type PositionPnLSnapshot {
 type TraderPnLSnapshot {
   id: ID!
   trader_id: String!
-  totalPnl: BigInt!
-  realizedPnl: BigInt!
-  unrealizedPnl: BigInt!
+  pnl: BigInt!
+  pnlPercentage: BigInt! # 18 decimals precision (pnl / totalCollateral)
   positionCount: BigInt!
   timestamp: BigInt!
   blockNumber: BigInt!
+}
+
+type MarketPositionTracker {
+  id: ID!
+  market_id: String!
+  openPositionIds: String!
+  openPositionCount: BigInt!
+  lastUpdatedAt: BigInt!
 }
 
 type Vault {

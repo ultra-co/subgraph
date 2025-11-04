@@ -16,8 +16,14 @@ import {
   Funding,
   MarginUpdate,
   Market,
+  PositionPnLSnapshot,
+  MarketPositionTracker,
 } from "generated";
 import { getIndexPrice } from "./effects/getPrice";
+import {
+  calculatePositionPnl,
+  calculatePnlPercentage,
+} from "./utils/priceHelpers";
 
 /**
  * Leverage precision constant for accurate decimal calculations with BigInt.
@@ -29,6 +35,111 @@ import { getIndexPrice } from "./effects/getPrice";
  * Example: 10.5x leverage is stored as 10.5e18 = 10,500,000,000,000,000,000
  */
 const LEVERAGE_PRECISION = BigInt(1e18);
+
+/**
+ * Add a position to the market's open position tracker.
+ * This allows us to efficiently find all open positions for PnL snapshot creation.
+ */
+export async function addPositionToMarketTracker(
+  context: any,
+  marketId: string,
+  positionId: string,
+  timestamp: bigint
+) {
+  const trackerId = marketId;
+  let tracker = await context.MarketPositionTracker.get(trackerId);
+
+  if (!tracker) {
+    tracker = {
+      id: trackerId,
+      market_id: marketId,
+      openPositionIds: positionId,
+      openPositionCount: BigInt(1),
+      lastUpdatedAt: timestamp,
+    };
+  } else {
+    const updatedIds = tracker.openPositionIds
+      ? `${tracker.openPositionIds},${positionId}`
+      : positionId;
+
+    tracker = {
+      ...tracker,
+      openPositionIds: updatedIds,
+      openPositionCount: tracker.openPositionCount + BigInt(1),
+      lastUpdatedAt: timestamp,
+    };
+  }
+
+  context.MarketPositionTracker.set(tracker);
+}
+
+/**
+ * Remove a position from the market's open position tracker.
+ */
+export async function removePositionFromMarketTracker(
+  context: any,
+  marketId: string,
+  positionId: string,
+  timestamp: bigint
+) {
+  const trackerId = marketId;
+  const tracker = await context.MarketPositionTracker.get(trackerId);
+
+  if (!tracker) {
+    return;
+  }
+
+  const positionIds = tracker.openPositionIds.split(",");
+  const updatedIds = positionIds
+    .filter((id: string) => id !== positionId)
+    .join(",");
+
+  const updatedTracker: MarketPositionTracker = {
+    ...tracker,
+    openPositionIds: updatedIds,
+    openPositionCount:
+      tracker.openPositionCount > BigInt(0)
+        ? tracker.openPositionCount - BigInt(1)
+        : BigInt(0),
+    lastUpdatedAt: timestamp,
+  };
+
+  context.MarketPositionTracker.set(updatedTracker);
+}
+
+/**
+ * Create a PnL snapshot for a position at the current market price.
+ * This is called on every price update to enable PnL charting.
+ */
+export async function createPositionPnLSnapshot(
+  context: any,
+  position: Position,
+  currentIndexPrice: bigint,
+  timestamp: bigint,
+  blockNumber: bigint,
+  chainId: number
+) {
+  // Only create snapshots for open positions with valid prices
+  if (position.closed || currentIndexPrice === BigInt(0)) {
+    return;
+  }
+
+  const pnl = calculatePositionPnl(position, currentIndexPrice);
+  const pnlPercentage = calculatePnlPercentage(pnl, position.collateral);
+
+  const snapshot: PositionPnLSnapshot = {
+    id: `${chainId}_${position.id}_${timestamp}`,
+    position_id: position.id,
+    trader_id: position.trader_id,
+    pnl,
+    pnlPercentage,
+    indexPrice: currentIndexPrice,
+    timestamp,
+    blockNumber,
+  };
+
+  context.PositionPnLSnapshot.set(snapshot);
+}
 
 LiquidRouter.ExpiredPositionSettled.handler(async ({ event, context }) => {
   const eventId = `${event.chainId}_${event.block.number}_${event.logIndex}`;
@@ -60,6 +171,14 @@ LiquidRouter.ExpiredPositionSettled.handler(async ({ event, context }) => {
     };
 
     context.Position.set(updatedPosition);
+
+    // Remove from tracker
+    await removePositionFromMarketTracker(
+      context,
+      position.market_id,
+      positionId,
+      BigInt(event.block.timestamp)
+    );
 
     // Update trader stats with realized PnL
     const trader = await context.Trader.get(position.trader_id);
@@ -354,6 +473,14 @@ LiquidRouter.PositionAutoClosedInsufficientFunding.handler(
 
       context.Position.set(updatedPosition);
 
+      // Remove from tracker
+      await removePositionFromMarketTracker(
+        context,
+        position.market_id,
+        positionId,
+        BigInt(event.block.timestamp)
+      );
+
       // Update trader stats with realized PnL (no PnL in insufficient funding event)
       const trader = await context.Trader.get(position.trader_id);
       if (trader) {
@@ -418,6 +545,14 @@ LiquidRouter.PositionClosed.handler(async ({ event, context }) => {
     };
 
     context.Position.set(updatedPosition);
+
+    // Remove from tracker
+    await removePositionFromMarketTracker(
+      context,
+      position.market_id,
+      positionId,
+      BigInt(event.block.timestamp)
+    );
 
     // Update trader stats with realized PnL
     const trader = await context.Trader.get(position.trader_id);
@@ -575,4 +710,22 @@ LiquidRouter.PositionOpened.handler(async ({ event, context }) => {
   };
 
   context.Position.set(position);
+
+  // Add to market tracker for PnL snapshot creation
+  await addPositionToMarketTracker(
+    context,
+    `${event.chainId}_${event.params.marketId}`,
+    position.id,
+    BigInt(event.block.timestamp)
+  );
+
+  // Create initial PnL snapshot at position opening
+  await createPositionPnLSnapshot(
+    context,
+    position,
+    entryIndexPrice,
+    BigInt(event.block.timestamp),
+    BigInt(event.block.number),
+    event.chainId
+  );
 });

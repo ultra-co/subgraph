@@ -7,6 +7,7 @@ import {
   Trader,
   Market,
 } from "generated";
+import { removePositionFromMarketTracker } from "./LiquidRouter";
 
 LiquidationEngine.KeeperRewardsClaimed.handler(async ({ event, context }) => {
   const entity: LiquidationEngine_KeeperRewardsClaimed = {
@@ -59,6 +60,14 @@ LiquidationEngine.PositionLiquidated.handler(async ({ event, context }) => {
     };
 
     context.Position.set(updatedPosition);
+
+    // Remove from tracker
+    await removePositionFromMarketTracker(
+      context,
+      position.market_id,
+      positionId,
+      BigInt(event.block.timestamp)
+    );
 
     // Update trader stats (liquidation = realized loss)
     const trader = await context.Trader.get(position.trader_id);
