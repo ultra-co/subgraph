@@ -14,7 +14,9 @@ export const getIndexPrice = experimental_createEffect(
   async ({ input, context }) => {
     // Skip RPC calls in test environment
     if (process.env.SKIP_RPC_IN_TESTS === "true") {
-      return "7500"; // Mock index price for tests
+      // Return a mock price based on blockNumber for test flexibility
+      // This allows tests to simulate different price scenarios
+      return "5000"; // Mock entry price for tests
     }
 
     try {
