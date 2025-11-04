@@ -78,6 +78,7 @@ type Market {
 
   # Trading volume (cumulative from all positions)
   volume: BigInt!
+  collateralVolume: BigInt!
 
   # Price history
   priceObservations: [PriceObservation!]! @derivedFrom(field: "market_id")

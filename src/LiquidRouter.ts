@@ -205,6 +205,7 @@ LiquidRouter.ExpiredPositionSettled.handler(async ({ event, context }) => {
       const updatedMarket: Market = {
         ...market,
         volume: market.volume + position.size,
+        collateralVolume: market.collateralVolume + position.collateral,
       };
       context.Market.set(updatedMarket);
     }
@@ -331,6 +332,8 @@ LiquidRouter.MarginAdded.handler(async ({ event, context }) => {
       const updatedMarket: Market = {
         ...market,
         volume: market.volume + event.params.additionalCollateral,
+        collateralVolume:
+          market.collateralVolume + event.params.additionalCollateral,
       };
       context.Market.set(updatedMarket);
     }
@@ -395,6 +398,8 @@ LiquidRouter.MarginRemoved.handler(async ({ event, context }) => {
       const updatedMarket: Market = {
         ...market,
         volume: market.volume + event.params.collateralRemoved,
+        collateralVolume:
+          market.collateralVolume + event.params.collateralRemoved,
       };
       context.Market.set(updatedMarket);
     }
@@ -503,6 +508,7 @@ LiquidRouter.PositionAutoClosedInsufficientFunding.handler(
         const updatedMarket: Market = {
           ...market,
           volume: market.volume + position.size,
+          collateralVolume: market.collateralVolume + position.collateral,
         };
         context.Market.set(updatedMarket);
       }
@@ -579,6 +585,7 @@ LiquidRouter.PositionClosed.handler(async ({ event, context }) => {
       const updatedMarket: Market = {
         ...market,
         volume: market.volume + position.size,
+        collateralVolume: market.collateralVolume + position.collateral,
       };
       context.Market.set(updatedMarket);
     }
@@ -647,6 +654,7 @@ LiquidRouter.PositionOpened.handler(async ({ event, context }) => {
   const updatedMarket: Market = {
     ...market,
     volume: market.volume + event.params.size,
+    collateralVolume: market.collateralVolume + event.params.collateral,
   };
 
   context.Market.set(updatedMarket);

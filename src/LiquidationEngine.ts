@@ -94,6 +94,7 @@ LiquidationEngine.PositionLiquidated.handler(async ({ event, context }) => {
       const updatedMarket: Market = {
         ...market,
         volume: market.volume + position.size,
+        collateralVolume: market.collateralVolume + position.collateral,
       };
       context.Market.set(updatedMarket);
     }
