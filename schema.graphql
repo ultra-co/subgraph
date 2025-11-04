@@ -221,6 +221,14 @@ type TraderPnLSnapshot {
   blockNumber: BigInt!
 }
 
+type MarketPositionTracker {
+  id: ID!
+  market_id: String!
+  openPositionIds: String!
+  openPositionCount: BigInt!
+  lastUpdatedAt: BigInt!
+}
+
 type Vault {
   id: ID!
   address: String!

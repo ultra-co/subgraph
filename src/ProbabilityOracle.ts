@@ -7,20 +7,13 @@ import {
   Market,
   PriceObservation,
   PriceCandle,
-  Position,
-  Trader,
-  PositionPnLSnapshot,
-  TraderPnLSnapshot,
+  MarketPositionTracker,
 } from "generated";
 import { getIndexPrice } from "./effects/getPrice";
 import { getMarketMetadata } from "./effects/getMarketMetadata";
 import { MARKET_QUESTIONS } from "./constants/marketQuestions";
-import {
-  getPeriodStart,
-  getPeriodDuration,
-  calculatePositionPnl,
-  calculatePnlPercentage,
-} from "./utils/priceHelpers";
+import { getPeriodStart, getPeriodDuration } from "./utils/priceHelpers";
+import { createPositionPnLSnapshot } from "./LiquidRouter";
 
 const CANDLE_INTERVALS = [
   "ONE_MINUTE",
@@ -130,6 +123,18 @@ ProbabilityOracle.PriceUpdated.handler(async ({ event, context }) => {
       indexPrice
     );
   }
+
+  // Create PnL snapshots for all open positions at this price update
+  if (indexPrice > BigInt(0)) {
+    await createPnLSnapshotsForMarket(
+      context,
+      marketFullId,
+      indexPrice,
+      event.params.timestamp,
+      event.block.number,
+      event.chainId
+    );
+  }
 });
 
 async function updateCandle(
@@ -183,6 +188,48 @@ async function updateCandle(
   }
 
   context.PriceCandle.set(candle);
+}
+
+/**
+ * Create PnL snapshots for all open positions in a market.
+ * Called on every price update to enable continuous PnL charting.
+ */
+async function createPnLSnapshotsForMarket(
+  context: any,
+  marketId: string,
+  indexPrice: bigint,
+  timestamp: bigint,
+  blockNumber: number,
+  chainId: number
+) {
+  // Get the tracker for this market
+  const tracker = await context.MarketPositionTracker.get(marketId);
+
+  if (!tracker || !tracker.openPositionIds || tracker.openPositionIds === "") {
+    // No open positions for this market
+    return;
+  }
+
+  // Parse the comma-separated list of position IDs
+  const positionIds = tracker.openPositionIds.split(",");
+
+  // Create a snapshot for each open position
+  for (const positionId of positionIds) {
+    if (!positionId) continue; // Skip empty strings
+
+    const position = await context.Position.get(positionId);
+
+    if (position && !position.closed) {
+      await createPositionPnLSnapshot(
+        context,
+        position,
+        indexPrice,
+        timestamp,
+        BigInt(blockNumber),
+        chainId
+      );
+    }
+  }
 }
 
 ProbabilityOracle.PriceUpdaterChanged.handler(async ({ event, context }) => {
