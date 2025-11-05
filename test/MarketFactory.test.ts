@@ -73,6 +73,8 @@ describe("MarketFactory contract tests", () => {
         blockNumber: BigInt(event.block.number),
         transactionHash: event.transaction.hash,
         question: undefined,
+        context: undefined,
+        resolution: undefined,
         image:
           "https://polymarket-upload.s3.us-east-2.amazonaws.com/test-image.jpg", // Mock image from effect when SKIP_RPC_IN_TESTS=true
         currentPrice: BigInt(0),

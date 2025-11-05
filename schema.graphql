@@ -70,6 +70,8 @@ type Market {
   # Metadata
   question: String
   image: String
+  context: String
+  resolution: String
 
   # Current prices (real-time)
   currentPrice: BigInt!

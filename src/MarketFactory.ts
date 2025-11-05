@@ -34,6 +34,8 @@ MarketFactory.MarketCreated.handler(async ({ event, context }) => {
     blockNumber: BigInt(event.block.number),
     transactionHash: event.transaction.hash,
     question: undefined,
+    context: undefined,
+    resolution: undefined,
     image: image,
     currentPrice: BigInt(0),
     indexPrice: undefined,

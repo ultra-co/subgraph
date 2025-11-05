@@ -12,7 +12,11 @@ import {
 } from "generated";
 import { getIndexPrice } from "./effects/getPrice";
 import { getMarketMetadata } from "./effects/getMarketMetadata";
-import { MARKET_QUESTIONS } from "./constants/marketQuestions";
+import {
+  MARKET_CONTEXT,
+  MARKET_QUESTIONS,
+  MARKET_RESOLUTION,
+} from "./constants/marketQuestions";
 import {
   getPeriodStart,
   getPeriodDuration,
@@ -79,6 +83,24 @@ ProbabilityOracle.PriceUpdated.handler(async ({ event, context }) => {
     }
   }
 
+  // check and update market context if missing
+  let marketContext = market.context;
+  if (!marketContext || marketContext.trim() === "") {
+    const contextForMarket = MARKET_CONTEXT[event.params.marketId];
+    if (contextForMarket) {
+      marketContext = contextForMarket;
+    }
+  }
+
+  // check and update market resolution if missing
+  let marketResolution = market.resolution;
+  if (!marketResolution || marketResolution.trim() === "") {
+    const resolutionForMarket = MARKET_RESOLUTION[event.params.marketId];
+    if (resolutionForMarket) {
+      marketResolution = resolutionForMarket;
+    }
+  }
+
   // Check and update image if missing
   let image = market.image;
   if (
@@ -98,6 +120,8 @@ ProbabilityOracle.PriceUpdated.handler(async ({ event, context }) => {
   const updatedMarket: Market = {
     ...market,
     question,
+    context: marketContext,
+    resolution: marketResolution,
     image,
     currentPrice: event.params.price,
     indexPrice,
