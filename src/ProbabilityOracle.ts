@@ -149,7 +149,8 @@ ProbabilityOracle.PriceUpdated.handler(async ({ event, context }) => {
       interval,
       event.params.timestamp,
       event.params.price,
-      indexPrice
+      indexPrice,
+      updatedMarket.collateralVolume
     );
   }
 
@@ -172,7 +173,8 @@ async function updateCandle(
   interval: string,
   timestamp: bigint,
   spotPrice: bigint,
-  indexPrice: bigint | undefined
+  indexPrice: bigint | undefined,
+  marketCollateralVolume: bigint
 ) {
   const periodStart = getPeriodStart(timestamp, interval);
   const periodEnd = periodStart + getPeriodDuration(interval);
@@ -193,6 +195,7 @@ async function updateCandle(
       indexHigh: indexPrice,
       indexLow: indexPrice,
       indexClose: indexPrice,
+      volume: marketCollateralVolume,
       observationCount: BigInt(1),
       periodStart: periodStart,
       periodEnd: periodEnd,
@@ -212,6 +215,7 @@ async function updateCandle(
           ? indexPrice
           : candle.indexLow,
       indexClose: indexPrice,
+      volume: marketCollateralVolume,
       observationCount: candle.observationCount + BigInt(1),
     };
   }

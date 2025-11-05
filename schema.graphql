@@ -114,6 +114,9 @@ type PriceCandle {
   indexLow: BigInt
   indexClose: BigInt
 
+  # Volume (market's total collateral volume at candle close)
+  volume: BigInt!
+
   # Metadata
   observationCount: BigInt!
   periodStart: BigInt!
