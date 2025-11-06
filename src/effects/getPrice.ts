@@ -22,7 +22,8 @@ export const getIndexPrice = experimental_createEffect(
       const ethers = await import("ethers");
 
       const provider = new ethers.JsonRpcProvider(
-        process.env.RPC_URL || "https://sepolia.base.org"
+        process.env.RPC_URL ||
+          "https://base-sepolia.g.alchemy.com/v2/2Lc0JacQ6CvrrvSTGBC3KxpJLXCUArbt"
       );
 
       const oracleContract = new ethers.Contract(
