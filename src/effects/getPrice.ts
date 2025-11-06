@@ -21,25 +21,38 @@ export const getIndexPrice = experimental_createEffect(
     try {
       const ethers = await import("ethers");
 
-      const provider = new ethers.JsonRpcProvider(
+      const rpcUrl =
         process.env.RPC_URL ||
-          "https://base-sepolia.g.alchemy.com/v2/2Lc0JacQ6CvrrvSTGBC3KxpJLXCUArbt"
-      );
+        "https://base-sepolia.g.alchemy.com/v2/2Lc0JacQ6CvrrvSTGBC3KxpJLXCUArbt";
+
+      const provider = new ethers.JsonRpcProvider(rpcUrl);
 
       const oracleContract = new ethers.Contract(
         ORACLE_ADDRESS,
-        ["function getPrice(bytes32 marketId) external view returns (uint96)"],
+        [
+          "function getLatestPrice(bytes32 marketId) external view returns (uint96)",
+        ],
         provider
       );
 
-      const indexPrice = await oracleContract.getPrice(input.marketId, {
-        blockTag: "latest",
+      // Query at the specific block number to get historical price
+      const indexPrice = await oracleContract.getLatestPrice(input.marketId, {
+        blockTag: input.blockNumber,
       });
+
+      context.log.info(
+        `Got index price ${indexPrice.toString()} for market ${
+          input.marketId
+        } at block ${input.blockNumber}`
+      );
 
       return indexPrice.toString();
     } catch (error) {
       context.log.error(
-        `Failed to get index price for market ${input.marketId}: ${error}`
+        `Failed to get index price for market ${input.marketId} at block ${input.blockNumber}: ${error}`
+      );
+      context.log.error(
+        `Stack: ${error instanceof Error ? error.stack : "N/A"}`
       );
       return null;
     }

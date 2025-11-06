@@ -235,6 +235,14 @@ type MarketPositionTracker {
   lastUpdatedAt: BigInt!
 }
 
+type TraderPositionTracker {
+  id: ID!
+  trader_id: String!
+  openPositionIds: String!
+  openPositionCount: BigInt!
+  lastUpdatedAt: BigInt!
+}
+
 type Vault {
   id: ID!
   address: String!

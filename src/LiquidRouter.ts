@@ -18,6 +18,7 @@ import {
   Market,
   PositionPnLSnapshot,
   MarketPositionTracker,
+  TraderPositionTracker,
 } from "generated";
 import { getIndexPrice } from "./effects/getPrice";
 import {
@@ -108,6 +109,76 @@ export async function removePositionFromMarketTracker(
 }
 
 /**
+ * Add a position to the trader's position tracker.
+ */
+export async function addPositionToTraderTracker(
+  context: any,
+  traderId: string,
+  positionId: string,
+  timestamp: bigint
+) {
+  const trackerId = traderId;
+  let tracker = await context.TraderPositionTracker.get(trackerId);
+
+  if (!tracker) {
+    tracker = {
+      id: trackerId,
+      trader_id: traderId,
+      openPositionIds: positionId,
+      openPositionCount: BigInt(1),
+      lastUpdatedAt: timestamp,
+    };
+  } else {
+    const updatedIds = tracker.openPositionIds
+      ? `${tracker.openPositionIds},${positionId}`
+      : positionId;
+
+    tracker = {
+      ...tracker,
+      openPositionIds: updatedIds,
+      openPositionCount: tracker.openPositionCount + BigInt(1),
+      lastUpdatedAt: timestamp,
+    };
+  }
+
+  context.TraderPositionTracker.set(tracker);
+}
+
+/**
+ * Remove a position from the trader's position tracker.
+ */
+export async function removePositionFromTraderTracker(
+  context: any,
+  traderId: string,
+  positionId: string,
+  timestamp: bigint
+) {
+  const trackerId = traderId;
+  const tracker = await context.TraderPositionTracker.get(trackerId);
+
+  if (!tracker) {
+    return;
+  }
+
+  const positionIds = tracker.openPositionIds.split(",");
+  const updatedIds = positionIds
+    .filter((id: string) => id !== positionId)
+    .join(",");
+
+  const updatedTracker: TraderPositionTracker = {
+    ...tracker,
+    openPositionIds: updatedIds,
+    openPositionCount:
+      tracker.openPositionCount > BigInt(0)
+        ? tracker.openPositionCount - BigInt(1)
+        : BigInt(0),
+    lastUpdatedAt: timestamp,
+  };
+
+  context.TraderPositionTracker.set(updatedTracker);
+}
+
+/**
  * Create a PnL snapshot for a position at the current market price.
  * This is called on every price update to enable PnL charting.
  */
@@ -172,10 +243,16 @@ LiquidRouter.ExpiredPositionSettled.handler(async ({ event, context }) => {
 
     context.Position.set(updatedPosition);
 
-    // Remove from tracker
+    // Remove from trackers
     await removePositionFromMarketTracker(
       context,
       position.market_id,
+      positionId,
+      BigInt(event.block.timestamp)
+    );
+    await removePositionFromTraderTracker(
+      context,
+      position.trader_id,
       positionId,
       BigInt(event.block.timestamp)
     );
@@ -552,10 +629,16 @@ LiquidRouter.PositionClosed.handler(async ({ event, context }) => {
 
     context.Position.set(updatedPosition);
 
-    // Remove from tracker
+    // Remove from trackers
     await removePositionFromMarketTracker(
       context,
       position.market_id,
+      positionId,
+      BigInt(event.block.timestamp)
+    );
+    await removePositionFromTraderTracker(
+      context,
+      position.trader_id,
       positionId,
       BigInt(event.block.timestamp)
     );
@@ -719,12 +802,23 @@ LiquidRouter.PositionOpened.handler(async ({ event, context }) => {
 
   context.Position.set(position);
 
-  // Add to market tracker for PnL snapshot creation
+  // Add to market and trader trackers for PnL snapshot creation
   await addPositionToMarketTracker(
     context,
     `${event.chainId}_${event.params.marketId}`,
     position.id,
     BigInt(event.block.timestamp)
+  );
+
+  await addPositionToTraderTracker(
+    context,
+    traderId,
+    position.id,
+    BigInt(event.block.timestamp)
+  );
+
+  context.log.info(
+    `Added position ${position.id} to market and trader trackers`
   );
 
   // Create initial PnL snapshot at position opening

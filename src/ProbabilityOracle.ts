@@ -253,7 +253,10 @@ async function createPnLSnapshotsForMarket(
     { unrealizedPnl: bigint; totalCollateral: bigint }
   >();
 
-  // Create a snapshot for each open position
+  // Track which traders we've seen (to aggregate across all their positions)
+  const tradersToUpdate = new Set<string>();
+
+  // Create a snapshot for each open position in THIS market
   for (const positionId of positionIds) {
     if (!positionId) continue; // Skip empty strings
 
@@ -269,29 +272,16 @@ async function createPnLSnapshotsForMarket(
         chainId
       );
 
-      // Aggregate PnL and collateral by trader
-      const traderId = position.trader_id;
-      const current = traderData.get(traderId) || {
-        unrealizedPnl: BigInt(0),
-        totalCollateral: BigInt(0),
-      };
-
-      const positionPnl = calculatePositionPnl(position, indexPrice);
-
-      traderData.set(traderId, {
-        unrealizedPnl: current.unrealizedPnl + positionPnl,
-        totalCollateral: current.totalCollateral + position.collateral,
-      });
+      // Track which traders need snapshots
+      tradersToUpdate.add(position.trader_id);
     }
   }
 
-  // Create trader PnL snapshots
-  for (const [traderId, data] of traderData) {
-    await createTraderPnLSnapshot(
+  // Create trader PnL snapshots - aggregate across ALL markets
+  for (const traderId of tradersToUpdate) {
+    await createTraderPnLSnapshotForAllPositions(
       context,
       traderId,
-      data.unrealizedPnl,
-      data.totalCollateral,
       timestamp,
       blockNumber,
       chainId
@@ -300,13 +290,12 @@ async function createPnLSnapshotsForMarket(
 }
 
 /**
- * Create a trader PnL snapshot aggregating all their open positions.
+ * Create a trader PnL snapshot by querying ALL their open positions across ALL markets.
+ * Uses TraderPositionTracker to efficiently find all positions.
  */
-async function createTraderPnLSnapshot(
+async function createTraderPnLSnapshotForAllPositions(
   context: any,
   traderId: string,
-  unrealizedPnl: bigint,
-  totalCollateral: bigint,
   timestamp: bigint,
   blockNumber: number,
   chainId: number
@@ -317,10 +306,38 @@ async function createTraderPnLSnapshot(
     return;
   }
 
-  // Total PnL = realized (from closed positions) + unrealized (from open positions)
-  const totalPnl = trader.realizedPnl + unrealizedPnl;
+  // Get trader's position tracker to find ALL open positions
+  const traderTracker = await context.TraderPositionTracker.get(traderId);
 
-  // PnL percentage based on current deployed collateral
+  let totalUnrealizedPnl = BigInt(0);
+  let totalCollateral = BigInt(0);
+
+  if (traderTracker && traderTracker.openPositionIds) {
+    // Parse all position IDs
+    const positionIds = traderTracker.openPositionIds.split(",");
+
+    // Calculate PnL across ALL positions (all markets)
+    for (const positionId of positionIds) {
+      if (!positionId) continue;
+
+      const position = await context.Position.get(positionId);
+
+      if (position && !position.closed) {
+        // Get latest price for this position's market
+        const market = await context.Market.get(position.market_id);
+        const marketIndexPrice = market?.indexPrice || position.entryIndexPrice;
+
+        const positionPnl = calculatePositionPnl(position, marketIndexPrice);
+        totalUnrealizedPnl += positionPnl;
+        totalCollateral += position.collateral;
+      }
+    }
+  }
+
+  // Total PnL = realized + unrealized across all positions
+  const totalPnl = trader.realizedPnl + totalUnrealizedPnl;
+
+  // PnL percentage based on total deployed capital
   const pnlPercentage =
     totalCollateral > BigInt(0)
       ? (totalPnl * BigInt(1e18)) / totalCollateral
