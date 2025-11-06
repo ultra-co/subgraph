@@ -220,7 +220,8 @@ type TraderPnLSnapshot {
   id: ID!
   trader_id: String!
   pnl: BigInt!
-  pnlPercentage: BigInt! # 18 decimals precision (pnl / totalCollateral)
+  pnlPercentage: BigInt! # 18 decimals precision (pnl / capitalDeployed)
+  capitalDeployed: BigInt! # Total collateral in open positions (USDC 6 decimals)
   positionCount: BigInt!
   timestamp: BigInt!
   blockNumber: BigInt!

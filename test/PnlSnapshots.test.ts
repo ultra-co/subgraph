@@ -433,6 +433,11 @@ describe("PnL Snapshot Tests", () => {
         traderSnapshot?.pnlPercentage !== undefined,
         "Should have pnlPercentage"
       );
+      assert.strictEqual(
+        traderSnapshot?.capitalDeployed,
+        BigInt(1000e6),
+        "Should track capital deployed ($1,000)"
+      );
     });
 
     it("should aggregate unrealized PnL from multiple positions", async () => {
@@ -511,6 +516,11 @@ describe("PnL Snapshot Tests", () => {
         traderSnapshot?.pnlPercentage,
         BigInt(0),
         "PnL percentage should be 0 at entry price"
+      );
+      assert.strictEqual(
+        traderSnapshot?.capitalDeployed,
+        BigInt(3000e6),
+        "Should track total capital from both positions ($3,000)"
       );
     });
 
@@ -780,6 +790,11 @@ describe("PnL Snapshot Tests", () => {
         "Should have 0 PnL percentage"
       );
       assert.strictEqual(
+        traderSnapshot?.capitalDeployed,
+        BigInt(1000e6),
+        "Should track capital deployed ($1,000)"
+      );
+      assert.strictEqual(
         traderSnapshot?.positionCount,
         BigInt(1),
         "Should have 1 open position"
@@ -862,6 +877,11 @@ describe("PnL Snapshot Tests", () => {
         traderSnapshot?.pnlPercentage,
         BigInt(0),
         "PnL percentage should be 0"
+      );
+      assert.strictEqual(
+        traderSnapshot?.capitalDeployed,
+        BigInt(3000e6),
+        "Should track total capital from both positions ($3,000)"
       );
     });
 

@@ -331,6 +331,7 @@ async function createTraderPnLSnapshot(
     trader_id: traderId,
     pnl: totalPnl,
     pnlPercentage,
+    capitalDeployed: totalCollateral,
     positionCount: trader.openPositions,
     timestamp,
     blockNumber: BigInt(blockNumber),
